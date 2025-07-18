@@ -6,7 +6,7 @@ using JSON3
 using Dates
 using Logging
 using Base.Threads
-using ..Config: CONFIG
+using ..Config
 using ..Utils: log_info, log_error, safe_json_parse
 using ..SwarmCoordinator: start_swarm_coordinator, stop_swarm_coordinator, 
                           submit_wallet_analysis_task, submit_token_analysis_task,

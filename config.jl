@@ -6,7 +6,7 @@ const CONFIG = Dict{String, String}()
 
 function load_config()
     DotEnv.config()
-    CONFIG["SOLANA_RPC_URL"] = get(ENV, "SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com")
+    CONFIG["SOLANA_RPC_URL"] = get(ENV, "SOLANA_RPC_URL", "")
     CONFIG["API_KEY"] = get(ENV, "API_KEY", "")
     CONFIG["SERVICE_PORT"] = get(ENV, "SERVICE_PORT", "8080")
     CONFIG["THREADS"] = get(ENV, "THREADS", "8")

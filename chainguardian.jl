@@ -9,6 +9,9 @@
 """
 
 # Load all modules
+include("SolanaRPC.jl")
+include("Utils.jl")
+include("config.jl")
 include("agents/token_scanner.jl")
 include("agents/tx_scanner.jl")
 include("agents/risk_evaluator.jl")
@@ -23,6 +26,8 @@ using .RiskEvaluator
 using .SwarmCoordinator
 using .SwarmWorker
 using .ChainGuardianAPI
+using .SolanaRPC
+using .Utils
 using Logging
 
 """
@@ -39,6 +44,7 @@ function main()
 
         # Load configuration
         Config.load_config()
+        println(Config)
 
         # Display startup information
         println("🚀 Starting ChainGuardian...")
