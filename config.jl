@@ -7,12 +7,27 @@ const CONFIG = Dict{String, String}()
 function load_config()
     DotEnv.config()
     CONFIG["SOLANA_RPC_URL"] = get(ENV, "SOLANA_RPC_URL", "https://api.mainnet-beta.solana.com")
-    # No API key is required for public Solana RPC endpoints, but you can set one via the environment if needed.
     CONFIG["API_KEY"] = get(ENV, "API_KEY", "")
     CONFIG["SERVICE_PORT"] = get(ENV, "SERVICE_PORT", "8080")
     CONFIG["THREADS"] = get(ENV, "THREADS", "8")
     CONFIG["LIQUIDITY_THRESHOLD"] = get(ENV, "LIQUIDITY_THRESHOLD", "0.2")
-    # Add more keys here as needed
+    
+    # External API Keys
+    CONFIG["BIRDEYE_API_KEY"] = get(ENV, "BIRDEYE_API_KEY", "")
+    CONFIG["HELIUS_API_KEY"] = get(ENV, "HELIUS_API_KEY", "")
+    CONFIG["QUICKNODE_API_KEY"] = get(ENV, "QUICKNODE_API_KEY", "")
+    
+    # Swarm Configuration
+    CONFIG["SWARM_WORKERS"] = get(ENV, "SWARM_WORKERS", "7")
+    CONFIG["TASK_TIMEOUT"] = get(ENV, "TASK_TIMEOUT", "300")
+    CONFIG["WORKER_HEARTBEAT_INTERVAL"] = get(ENV, "WORKER_HEARTBEAT_INTERVAL", "30")
+    
+    # Risk Analysis Configuration
+    CONFIG["TOKEN_ANALYSIS_ENABLED"] = get(ENV, "TOKEN_ANALYSIS_ENABLED", "true")
+    CONFIG["TX_ANALYSIS_ENABLED"] = get(ENV, "TX_ANALYSIS_ENABLED", "true")
+    CONFIG["AIRDROP_ANALYSIS_ENABLED"] = get(ENV, "AIRDROP_ANALYSIS_ENABLED", "true")
+    CONFIG["MAX_TX_HISTORY"] = get(ENV, "MAX_TX_HISTORY", "100")
+    
     return CONFIG
 end
 
