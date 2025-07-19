@@ -12,6 +12,7 @@ using ..TokenScanner: scan_wallet_tokens
 using ..TxScanner: scan_wallet_transactions
 using ..RiskEvaluator: evaluate_wallet_risk
 using Statistics
+
 """
     SwarmTask
 Represents a task that can be distributed across the swarm
@@ -553,10 +554,10 @@ function cleanup_old_tasks()
 end
 
 """
-    get_task_status(task_id::String)::Union{Dict, Nothing}
+    get_task_status(task_id::AbstractString)::Union{Dict, Nothing}
 Gets the status of a task
 """
-function get_task_status(task_id::String)::Union{Dict, Nothing}
+function get_task_status(task_id::AbstractString)::Union{Dict, Nothing}
     # Check completed tasks
     if haskey(COORDINATOR_STATE.completed_tasks, task_id)
         return COORDINATOR_STATE.completed_tasks[task_id]

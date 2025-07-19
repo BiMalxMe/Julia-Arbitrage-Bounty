@@ -147,7 +147,13 @@ function main()
         println("=" ^ 60)
 
         # Start the server (this will block)
-        Agent_serve()
+        try
+            Agent_serve()
+        catch e
+            println("❌ Error starting server: $e")
+            @error "Server startup failed" exception=(e, catch_backtrace())
+            exit(1)
+        end
 
     catch e
         if isa(e, InterruptException)

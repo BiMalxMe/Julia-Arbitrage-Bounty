@@ -51,6 +51,8 @@ function scan_wallet_tokens(wallet_address::String)::Dict
         # Analyze each token account
         for account in token_accounts
             try
+                println("DEBUG: typeof(account) = ", typeof(account))
+                println("DEBUG: account = ", account)
                 risk = analyze_token_account(account)
                 if !isnothing(risk)
                     push!(risks, risk)
@@ -99,7 +101,7 @@ end
     analyze_token_account(account::Dict)::Union{TokenRisk, Nothing}
 Analyzes a single token account for risk factors
 """
-function analyze_token_account(account::Dict)::Union{TokenRisk, Nothing}
+function analyze_token_account(account)::Union{TokenRisk, Nothing}
     try
         account_info = account["account"]
         parsed_info = account_info["data"]["parsed"]["info"]

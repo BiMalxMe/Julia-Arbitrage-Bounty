@@ -10,14 +10,14 @@ using ..Config
 using ..Utils: log_info, log_error, safe_json_parse
 using ..Config: CONFIG, load_config
 using ..SwarmCoordinator: start_swarm_coordinator, stop_swarm_coordinator, 
-                          submit_wallet_analysis_task, submit_token_analysis_task,
-                          submit_transaction_analysis_task, get_task_status, get_swarm_status
-using ..RiskEvaluator: evaluate_wallet_risk
+                           submit_wallet_analysis_task, submit_token_analysis_task,
+                           submit_transaction_analysis_task, get_task_status, get_swarm_status
 
 """
     ChainGuardian API Server
 Enhanced API server with swarm integration
 """
+# @assert isdefined(Main, :get_task_status) || isdefined(ChainGuardianAPI, :get_task_status) "get_task_status is not defined"
 
 const AGENT_METADATA = Dict(
     "name" => "ChainGuardian",
@@ -43,7 +43,7 @@ function start_chainguardian_server()
     log_info("Starting ChainGuardian API Server...")
     
     # Load configuration
-    Config.load_config()
+    load_config()
     
     # Start swarm coordinator
     start_swarm_coordinator()
@@ -92,6 +92,10 @@ function handle_request(req::HTTP.Request)::HTTP.Response
         # Route requests
         if req.method == "GET" && req.target == "/status"
             return handle_status_request(headers)
+        elseif req.method == "GET" && req.target == "/config"
+            return handle_config_request(headers)
+        elseif req.method == "PUT" && req.target == "/config"
+            return handle_config_update_request(req, headers)
         elseif req.method == "GET" && req.target == "/swarm/status"
             return handle_swarm_status_request(headers)
         elseif req.method == "GET" && startswith(req.target, "/risk/")
@@ -139,6 +143,76 @@ function handle_status_request(headers::Vector{Pair{String, String}})::HTTP.Resp
     )
     
     return HTTP.Response(200, headers, JSON3.write(status_data))
+end
+
+"""
+    handle_config_request(headers::Vector{Pair{String, String}})::HTTP.Response
+Handles configuration requests
+"""
+function handle_config_request(headers::Vector{Pair{String, String}})::HTTP.Response
+    config_data = Dict(
+        "static_config" => Dict(
+            "solana_rpc_url" => CONFIG["SOLANA_RPC_URL"],
+            "service_port" => CONFIG["SERVICE_PORT"],
+            "threads" => CONFIG["THREADS"],
+            "swarm_workers" => CONFIG["SWARM_WORKERS"],
+            "task_timeout" => CONFIG["TASK_TIMEOUT"],
+            "worker_heartbeat_interval" => CONFIG["WORKER_HEARTBEAT_INTERVAL"]
+        ),
+        "dynamic_config" => Dict(
+            "token_analysis_enabled" => CONFIG["TOKEN_ANALYSIS_ENABLED"],
+            "tx_analysis_enabled" => CONFIG["TX_ANALYSIS_ENABLED"],
+            "airdrop_analysis_enabled" => CONFIG["AIRDROP_ANALYSIS_ENABLED"],
+            "max_tx_history" => CONFIG["MAX_TX_HISTORY"],
+            "liquidity_threshold" => CONFIG["LIQUIDITY_THRESHOLD"]
+        ),
+        "api_keys" => Dict(
+            "birdeye_api_key" => CONFIG["BIRDEYE_API_KEY"],
+            "helius_api_key" => CONFIG["HELIUS_API_KEY"],
+            "quicknode_api_key" => CONFIG["QUICKNODE_API_KEY"]
+        ),
+        "timestamp" => string(now())
+    )
+    
+    return HTTP.Response(200, headers, JSON3.write(config_data))
+end
+
+"""
+    handle_config_update_request(req::HTTP.Request, headers::Vector{Pair{String, String}})::HTTP.Response
+Handles configuration update requests
+"""
+function handle_config_update_request(req::HTTP.Request, headers::Vector{Pair{String, String}})::HTTP.Response
+    try
+        body = String(req.body)
+        payload = safe_json_parse(body)
+        
+        if haskey(payload, "error")
+            return HTTP.Response(400, headers, JSON3.write(payload))
+        end
+        
+        # Update dynamic configuration
+        updated_fields = String[]
+        for (key, value) in payload
+            if haskey(CONFIG, key)
+                CONFIG[key] = value
+                push!(updated_fields, key)
+                log_info("Updated dynamic config: $key = $value")
+            end
+        end
+        
+        response = Dict(
+            "status" => "updated",
+            "updated_fields" => updated_fields,
+            "message" => "Configuration updated successfully",
+            "timestamp" => string(now())
+        )
+        
+        return HTTP.Response(200, headers, JSON3.write(response))
+        
+    catch e
+        log_error("Configuration update error: $e")
+        return HTTP.Response(400, headers, JSON3.write(Dict("error" => "Invalid configuration data")))
+    end
 end
 
 """
@@ -310,7 +384,7 @@ function handle_task_status_request(req::HTTP.Request, headers::Vector{Pair{Stri
     task_id = path_parts[3]
     
     # Get task status
-    task_info = get_task_status(task_id)
+    task_info = get_task_status(String(task_id))
     
     if isnothing(task_info)
         return HTTP.Response(404, headers, JSON3.write(Dict("error" => "Task not found")))
@@ -361,7 +435,7 @@ end
 
 # JuliaOS agent lifecycle hooks
 function Agent_init()
-    Config.load_config()
+    load_config()
     log_info("ChainGuardian agent initialized")
 end
 
