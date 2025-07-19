@@ -11,7 +11,7 @@ using ..Utils: log_info, log_error
 using ..TokenScanner: scan_wallet_tokens
 using ..TxScanner: scan_wallet_transactions
 using ..RiskEvaluator: evaluate_wallet_risk
-
+using Statistics
 """
     SwarmTask
 Represents a task that can be distributed across the swarm
@@ -361,13 +361,14 @@ function execute_task(task::SwarmTask, worker::SwarmWorker)
         execution_time = time() - start_time
         
         # Store result
-        COORDINATOR_STATE.completed_tasks[task.id] = Dict(
-            "task" => task,
-            "result" => result,
-            "execution_time" => execution_time,
-            "worker_id" => worker.id,
-            "completed_at" => now()
-        )
+       # For completed tasks:
+       COORDINATOR_STATE.completed_tasks[task.id] = Dict(
+    "task" => swarm_task_to_dict(task), # <--- FIXED: Now stores a Dict
+    "result" => result,
+    "execution_time" => execution_time,
+    "worker_id" => worker.id,
+    "completed_at" => now()
+)
         
         # Update task status
         update_task_status(task.id, "COMPLETED")
@@ -382,14 +383,14 @@ function execute_task(task::SwarmTask, worker::SwarmWorker)
         
         log_error("Task $(task.id) failed: $e")
         
-        # Store failure information
-        COORDINATOR_STATE.failed_tasks[task.id] = Dict(
-            "task" => task,
-            "error" => sprint(showerror, e),
-            "execution_time" => execution_time,
-            "worker_id" => worker.id,
-            "failed_at" => now()
-        )
+     # For failed tasks:
+COORDINATOR_STATE.failed_tasks[task.id] = Dict(
+    "task" => swarm_task_to_dict(task), # <--- FIXED: Now stores a Dict
+    "error" => sprint(showerror, e),
+    "execution_time" => execution_time,
+    "worker_id" => worker.id,
+    "failed_at" => now()
+)
         
         # Update task status
         update_task_status(task.id, "FAILED")
@@ -539,29 +540,35 @@ end
     get_task_status(task_id::String)::Union{Dict, Nothing}
 Gets the status of a task
 """
+
 function get_task_status(task_id::String)::Union{Dict, Nothing}
-    # Check completed tasks
-    if haskey(COORDINATOR_STATE.completed_tasks, task_id)
-        return COORDINATOR_STATE.completed_tasks[task_id]
-    end
-    
-    # Check failed tasks
-    if haskey(COORDINATOR_STATE.failed_tasks, task_id)
-        return COORDINATOR_STATE.failed_tasks[task_id]
-    end
-    
-    # Check pending/running tasks
-    task = findfirst(t -> t.id == task_id, COORDINATOR_STATE.task_queue)
-    if !isnothing(task)
-        return Dict(
-            "task" => COORDINATOR_STATE.task_queue[task],
-            "status" => COORDINATOR_STATE.task_queue[task].status
-        )
-    end
-    
-    return nothing
+# Check completed tasks
+if haskey(COORDINATOR_STATE.completed_tasks, task_id)
+    return COORDINATOR_STATE.completed_tasks[task_id]
 end
 
+# Check failed tasks
+if haskey(COORDINATOR_STATE.failed_tasks, task_id)
+    return COORDINATOR_STATE.failed_tasks[task_id]
+end
+
+# Check pending/running/assigned tasks
+task_index = findfirst(t -> t.id == task_id, COORDINATOR_STATE.task_queue)
+if !isnothing(task_index)
+    task = COORDINATOR_STATE.task_queue[task_index]
+    return Dict(
+        "task_id" => task.id,
+        "task_type" => task.task_type,
+        "wallet_address" => task.wallet_address,
+        "priority" => task.priority,
+        "created_at" => string(task.created_at),
+        "assigned_worker" => task.assigned_worker,
+        "status" => task.status,
+        "parameters" => task.parameters
+    )
+end
+return nothing
+end
 """
     get_swarm_status()::Dict
 Gets the current status of the swarm
@@ -581,8 +588,20 @@ function get_swarm_status()::Dict
     )
 end
 
-export start_swarm_coordinator, stop_swarm_coordinator, submit_wallet_analysis_task,
-       submit_token_analysis_task, submit_transaction_analysis_task, get_task_status,
-       get_swarm_status, COORDINATOR_STATE
-
+# Add this somewhere in SwarmCoordinator.jl, e.g., after the SwarmTask struct definition
+function swarm_task_to_dict(task::SwarmTask)::Dict
+    return Dict(
+        "task_id" => task.id,
+        "task_type" => task.task_type,
+        "wallet_address" => task.wallet_address,
+        "parameters" => task.parameters, # Assuming parameters is already Dict{String, Any}
+        "priority" => task.priority,
+        "created_at" => string(task.created_at), # Convert DateTime to String
+        "assigned_worker" => task.assigned_worker,
+        "status" => task.status
+    )
+end
+export get_task_status, start_swarm_coordinator, stop_swarm_coordinator, 
+       submit_wallet_analysis_task, submit_token_analysis_task,
+       submit_transaction_analysis_task, get_swarm_status
 end # module

@@ -1,0 +1,43 @@
+# Ignore dependencies
+node_modules/
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+
+# Ignore build output
+dist/
+build/
+out/
+.next/
+.vercel/
+.svelte-kit/
+.svelte/
+.ssg/
+.snowpack/
+.vite/
+coverage/
+*.log
+
+# Ignore environment files
+.env
+.env.*
+!.env.example
+
+# Ignore editor/OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Ignore test snapshots
+__snapshots__/
+
+# Ignore static export
+exported/
+
+# Ignore local dev server files
+*.local
+
+# Ignore storybook static build
+storybook-static/

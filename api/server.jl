@@ -6,8 +6,9 @@ using JSON3
 using Dates
 using Logging
 using Base.Threads
-using ..Config: CONFIG, load_config
+using ..Config
 using ..Utils: log_info, log_error, safe_json_parse
+using ..Config: CONFIG, load_config
 using ..SwarmCoordinator: start_swarm_coordinator, stop_swarm_coordinator, 
                           submit_wallet_analysis_task, submit_token_analysis_task,
                           submit_transaction_analysis_task, get_task_status, get_swarm_status
@@ -15,7 +16,7 @@ using ..RiskEvaluator: evaluate_wallet_risk
 
 """
     ChainGuardian API Server
-Enhanced API server with swarm integration and dynamic configuration
+Enhanced API server with swarm integration
 """
 
 const AGENT_METADATA = Dict(
@@ -30,54 +31,9 @@ const AGENT_METADATA = Dict(
         "rugpull_detection",
         "airdrop_discovery",
         "comprehensive_risk_assessment",
-        "swarm_orchestration",
-        "dynamic_configuration"
+        "swarm_orchestration"
     ]
 )
-
-# Global state for dynamic configuration and system status
-const DYNAMIC_CONFIG = Dict{String, Any}()
-const SYSTEM_STATUS = Dict{String, Any}(
-    "is_running" => false,
-    "start_time" => nothing,
-    "active_tasks" => 0,
-    "total_requests" => 0
-)
-
-"""
-    update_dynamic_config(key::String, value::Any)
-Update dynamic configuration at runtime
-"""
-function update_dynamic_config(key::String, value::Any)
-    global DYNAMIC_CONFIG
-    DYNAMIC_CONFIG[key] = value
-    log_info("Updated dynamic config: $key = $value")
-end
-
-"""
-    get_dynamic_config(key::String, default::Any=nothing)
-Get dynamic configuration value
-"""
-function get_dynamic_config(key::String, default::Any=nothing)
-    return get(DYNAMIC_CONFIG, key, default)
-end
-
-"""
-    update_system_status(key::String, value::Any)
-Update system status
-"""
-function update_system_status(key::String, value::Any)
-    global SYSTEM_STATUS
-    SYSTEM_STATUS[key] = value
-end
-
-"""
-    get_system_status()
-Get current system status
-"""
-function get_system_status()
-    return copy(SYSTEM_STATUS)
-end
 
 """
     start_chainguardian_server()
@@ -87,13 +43,7 @@ function start_chainguardian_server()
     log_info("Starting ChainGuardian API Server...")
     
     # Load configuration
-    load_config()
-    
-    # Initialize dynamic configuration
-    update_dynamic_config("api_rate_limit", 100)
-    update_dynamic_config("max_concurrent_tasks", 10)
-    update_dynamic_config("cache_enabled", true)
-    update_dynamic_config("debug_mode", false)
+    Config.load_config()
     
     # Start swarm coordinator
     start_swarm_coordinator()
@@ -103,7 +53,7 @@ function start_chainguardian_server()
     log_info("Starting HTTP server on 127.0.0.1:$port")
     
     try
-        HTTP.serve(handle_request, ip"127.0.0.1", port)
+        HTTP.serve(handle_request, "127.0.0.1", port)
     catch e
         log_error("Failed to start server: $e")
         stop_swarm_coordinator()
@@ -126,13 +76,10 @@ Main request handler for the API
 """
 function handle_request(req::HTTP.Request)::HTTP.Response
     try
-        # Update request counter
-        update_system_status("total_requests", get_system_status()["total_requests"] + 1)
-        
         # Add CORS headers
         headers = [
             "Access-Control-Allow-Origin" => "*",
-            "Access-Control-Allow-Methods" => "GET, POST, PUT, OPTIONS",
+            "Access-Control-Allow-Methods" => "GET, POST, OPTIONS",
             "Access-Control-Allow-Headers" => "Content-Type, Authorization",
             "Content-Type" => "application/json"
         ]
@@ -145,12 +92,6 @@ function handle_request(req::HTTP.Request)::HTTP.Response
         # Route requests
         if req.method == "GET" && req.target == "/status"
             return handle_status_request(headers)
-        elseif req.method == "GET" && req.target == "/health"
-            return handle_health_check(headers)
-        elseif req.method == "GET" && req.target == "/config"
-            return handle_config_request(headers)
-        elseif req.method == "PUT" && req.target == "/config"
-            return handle_config_update(req, headers)
         elseif req.method == "GET" && req.target == "/swarm/status"
             return handle_swarm_status_request(headers)
         elseif req.method == "GET" && startswith(req.target, "/risk/")
@@ -161,6 +102,8 @@ function handle_request(req::HTTP.Request)::HTTP.Response
             return handle_swarm_submit_request(req, headers)
         elseif req.method == "GET" && startswith(req.target, "/task/")
             return handle_task_status_request(req, headers)
+        elseif req.method == "GET" && req.target == "/health"
+            return handle_health_check(headers)
         else
             return HTTP.Response(404, headers, JSON3.write(Dict("error" => "Not Found")))
         end
@@ -182,66 +125,20 @@ Handles status endpoint requests
 """
 function handle_status_request(headers::Vector{Pair{String, String}})::HTTP.Response
     swarm_status = get_swarm_status()
-    system_status = get_system_status()
     
     status_data = Dict(
         "status" => "ok",
         "timestamp" => string(now()),
         "agent" => AGENT_METADATA,
-        "system" => system_status,
         "swarm" => swarm_status,
         "config" => Dict(
             "solana_rpc_url" => CONFIG["SOLANA_RPC_URL"],
             "service_port" => CONFIG["SERVICE_PORT"],
-            "threads" => CONFIG["THREADS"],
-            "dynamic_config" => Dict(DYNAMIC_CONFIG)
+            "threads" => CONFIG["THREADS"]
         )
     )
     
     return HTTP.Response(200, headers, JSON3.write(status_data))
-end
-
-"""
-    handle_config_request(headers::Vector{Pair{String, String}})::HTTP.Response
-Handles configuration request
-"""
-function handle_config_request(headers::Vector{Pair{String, String}})::HTTP.Response
-    config_data = Dict(
-        "static_config" => CONFIG,
-        "dynamic_config" => Dict(DYNAMIC_CONFIG),
-        "timestamp" => string(now())
-    )
-    
-    return HTTP.Response(200, headers, JSON3.write(config_data))
-end
-
-"""
-    handle_config_update(req::HTTP.Request, headers::Vector{Pair{String, String}})::HTTP.Response
-Handles configuration update
-"""
-function handle_config_update(req::HTTP.Request, headers::Vector{Pair{String, String}})::HTTP.Response
-    body = String(req.body)
-    payload = safe_json_parse(body)
-    
-    if haskey(payload, "error")
-        return HTTP.Response(400, headers, JSON3.write(payload))
-    end
-    
-    # Update dynamic configuration
-    updated_keys = String[]
-    for (key, value) in payload
-        update_dynamic_config(key, value)
-        push!(updated_keys, key)
-    end
-    
-    response = Dict(
-        "status" => "updated",
-        "updated_keys" => updated_keys,
-        "message" => "Configuration updated successfully",
-        "timestamp" => string(now())
-    )
-    
-    return HTTP.Response(200, headers, JSON3.write(response))
 end
 
 """
@@ -272,18 +169,6 @@ function handle_risk_analysis_request(req::HTTP.Request, headers::Vector{Pair{St
     end
     
     log_info("Processing risk analysis request for wallet: $wallet_address")
-    
-    # Check rate limiting
-    rate_limit = get_dynamic_config("api_rate_limit", 100)
-    current_requests = get_system_status()["total_requests"]
-    
-    if current_requests > rate_limit
-        return HTTP.Response(429, headers, JSON3.write(Dict(
-            "error" => "Rate limit exceeded",
-            "rate_limit" => rate_limit,
-            "current_requests" => current_requests
-        )))
-    end
     
     # Submit to swarm for processing
     task_id = submit_wallet_analysis_task(wallet_address, 2)  # High priority
@@ -439,18 +324,12 @@ end
 Handles health check requests
 """
 function handle_health_check(headers::Vector{Pair{String, String}})::HTTP.Response
-    system_status = get_system_status()
-    swarm_status = get_swarm_status()
-    
     health_data = Dict(
         "status" => "healthy",
         "timestamp" => string(now()),
-        "uptime" => system_status["start_time"] !== nothing ? string(now() - system_status["start_time"]) : "N/A",
+        "uptime" => "N/A",  # Would track actual uptime
         "version" => AGENT_METADATA["version"],
-        "system_running" => system_status["is_running"],
-        "swarm_healthy" => swarm_status["is_running"],
-        "active_tasks" => system_status["active_tasks"],
-        "total_requests" => system_status["total_requests"]
+        "swarm_healthy" => get_swarm_status()["is_running"]
     )
     
     return HTTP.Response(200, headers, JSON3.write(health_data))
@@ -482,7 +361,7 @@ end
 
 # JuliaOS agent lifecycle hooks
 function Agent_init()
-    load_config()
+    Config.load_config()
     log_info("ChainGuardian agent initialized")
 end
 
@@ -490,8 +369,7 @@ function Agent_serve()
     start_chainguardian_server()
 end
 
-export start_chainguardian_server, stop_chainguardian_server, Agent_init, Agent_serve,
-       update_dynamic_config, get_dynamic_config, update_system_status, get_system_status
+export start_chainguardian_server, stop_chainguardian_server, Agent_init, Agent_serve
 
 end # module
 

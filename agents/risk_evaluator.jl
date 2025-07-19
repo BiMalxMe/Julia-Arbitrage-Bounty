@@ -118,6 +118,7 @@ function aggregate_risk_assessment(wallet_address::String, token_results::Dict, 
     )
 end
 
+
 """
     check_unclaimed_airdrops(wallet_address::String)::Dict
 Checks for unclaimed airdrops and potential opportunities
@@ -145,7 +146,9 @@ function check_unclaimed_airdrops(wallet_address::String)::Dict
             airdrops["nft"] = nft_airdrops
         end
         
-        total_value = sum(get(airdrop, "estimated_value", 0.0) for category in values(airdrops) for airdrop in category)
+        # ===> FIX IS HERE <===
+        # Add `init=0.0` to the sum function
+        total_value = sum(get(airdrop, "estimated_value", 0.0) for category in values(airdrops) for airdrop in category; init=0.0)
         
         return Dict(
             "wallet_address" => wallet_address,

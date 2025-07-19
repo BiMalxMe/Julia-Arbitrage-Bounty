@@ -27,11 +27,12 @@ using .RiskEvaluator: evaluate_wallet_risk, WalletRiskAssessment
 using .SwarmCoordinator: start_swarm_coordinator, stop_swarm_coordinator, 
                           submit_wallet_analysis_task, submit_token_analysis_task,
                           submit_transaction_analysis_task, get_task_status, get_swarm_status
-using .SwarmWorker: start_worker, stop_worker
+using .SwarmWorker
 using .ChainGuardianAPI: start_chainguardian_server, stop_chainguardian_server, Agent_init, Agent_serve
 using .SolanaRPC: solana_rpc_request, fetch_token_accounts_by_owner
 using .Utils: log_info, log_error, safe_json_parse
 using Logging
+using Dates
 
 # Global state for dynamic configuration
 const DYNAMIC_CONFIG = Dict{String, Any}()
