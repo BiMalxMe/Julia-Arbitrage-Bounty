@@ -53,7 +53,7 @@ Agent capability structure
 """
 mutable struct AgentCapability
     name::String
-    function::Function
+    func::Function
     description::String
     rate_limit::Int
     last_execution::DateTime
@@ -155,7 +155,7 @@ function execute_capability(agent::Agent, capability_name::String, args...; kwar
         capability.last_execution = now()
         
         # Execute the capability
-        result = capability.function(agent, args...; kwargs...)
+        result = capability.func(agent, args...; kwargs...)
         
         # Update agent state
         agent.state.message_count += 1

@@ -5,12 +5,13 @@ This agent uses LLM integration to analyze NFT market data and provide
 qualitative insights using multiple AI providers with fallbacks.
 """
 
-using JuliaOS
+include("src/JuliaOS.jl")
+using .JuliaOS
 using HTTP
 using JSON3
 
 # Agent configuration
-const AI_ANALYZER_CONFIG = Dict(
+ AI_ANALYZER_CONFIG = Dict(
     "name" => "AIAnalyzer",
     "description" => "AI-powered analysis of NFT market data and sentiment",
     "capabilities" => ["llm_analysis", "sentiment_analysis", "trend_analysis"],
@@ -242,28 +243,35 @@ end
 Generate structured reasoning steps
 """
 function generate_reasoning_steps(response::String, data::Dict)
-    steps = [
-        Dict(
-            "factor" => "Social Media Sentiment",
-            "impact" => determine_sentiment_impact(get(get(data, "social_data", Dict()), "sentiment_score", 0.5)),
-            "confidence" => 80,
-            "explanation" => "Social sentiment analysis from Twitter and community channels"
-        ),
-        Dict(
-            "factor" => "Trading Volume",
-            "impact" => determine_volume_impact(get(get(data, "market_data", Dict()), "volume_24h", 0)),
-            "confidence" => 75,
-            "explanation" => "24-hour trading volume indicates market activity and liquidity"
-        ),
-        Dict(
-            "factor" => "Market Conditions",
-            "impact" => "neutral",
-            "confidence" => 65,
-            "explanation" => "Overall NFT market conditions and macroeconomic factors"
-        )
-    ]
-    
-    return steps
+    try
+        volume = get(get(data, "market_data", Dict()), "volume_24h", 0)
+        sentiment_score = get(get(data, "social_data", Dict()), "sentiment_score", 0.5)
+        steps = [
+            Dict(
+                "factor" => "Social Media Sentiment",
+                "impact" => determine_sentiment_impact(sentiment_score),
+                "confidence" => 80,
+                "explanation" => "Social sentiment analysis from Twitter and community channels"
+            ),
+            Dict(
+                "factor" => "Trading Volume",
+                "impact" => determine_volume_impact(volume),
+                "confidence" => 75,
+                "explanation" => "24-hour trading volume indicates market activity and liquidity"
+            ),
+            Dict(
+                "factor" => "Market Conditions",
+                "impact" => "neutral",
+                "confidence" => 65,
+                "explanation" => "Overall NFT market conditions and macroeconomic factors"
+            )
+        ]
+        
+        return steps
+    catch e
+        @warn "Error in generate_reasoning_steps: $e"
+        return []
+    end
 end
 
 """
@@ -282,13 +290,20 @@ end
 """
 Determine volume impact
 """
-function determine_volume_impact(volume::Float64)
-    if volume > 100
-        return "positive"
-    elseif volume < 10
-        return "negative"
-    else
-        return "neutral"
+function determine_volume_impact(volume)
+    try
+        if isnothing(volume) || volume === missing
+            return "unknown"
+        elseif volume > 100
+            return "positive"
+        elseif volume < 10
+            return "negative"
+        else
+            return "neutral"
+        end
+    catch e
+        @warn "Error in determine_volume_impact: $e"
+        return "unknown"
     end
 end
 

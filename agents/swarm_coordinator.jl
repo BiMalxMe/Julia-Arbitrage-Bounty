@@ -5,7 +5,8 @@ This agent orchestrates the entire prediction pipeline by coordinating
 all other agents and managing data flow between them.
 """
 
-using JuliaOS
+include("src/JuliaOS.jl")
+using .JuliaOS
 using Dates
 
 # Include other agents

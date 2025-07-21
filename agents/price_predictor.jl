@@ -5,12 +5,13 @@ This agent combines quantitative data with AI insights to generate
 multi-timeframe price predictions with confidence scores.
 """
 
-using JuliaOS
+include("src/JuliaOS.jl")
+using .JuliaOS
 using Statistics
 using Dates
 
 # Agent configuration
-const PRICE_PREDICTOR_CONFIG = Dict(
+ PRICE_PREDICTOR_CONFIG = Dict(
     "name" => "PricePredictor",
     "description" => "Generates multi-timeframe price predictions with confidence scores",
     "capabilities" => ["price_prediction", "confidence_scoring", "risk_assessment"],
@@ -33,16 +34,30 @@ function predict_prices(market_data::Dict, ai_analysis::Dict)
         market_sentiment = get(ai_analysis, "market_sentiment", "neutral")
         confidence_score = get(ai_analysis, "confidence_score", 70)
         
+        # Defensive check for invalid base price
+        if isnothing(current_floor_price) || isnan(current_floor_price) || current_floor_price <= 0
+            error_msg = "Invalid or missing base price for prediction."
+            predictions = Dict(
+                "24h" => Dict("direction" => "stable", "percentage_change" => 0.0, "confidence" => 50, "price_target" => 0.0, "error" => error_msg),
+                "7d" => Dict("direction" => "stable", "percentage_change" => 0.0, "confidence" => 50, "price_target" => 0.0, "error" => error_msg),
+                "30d" => Dict("direction" => "stable", "percentage_change" => 0.0, "confidence" => 50, "price_target" => 0.0, "error" => error_msg)
+            )
+            return Dict(
+                "success" => false,
+                "predictions" => predictions,
+                "overall_confidence" => 50,
+                "base_price" => current_floor_price,
+                "error" => error_msg
+            )
+        end
         # Generate predictions for each timeframe
         predictions = Dict(
             "24h" => predict_timeframe(current_floor_price, market_data, ai_analysis, "24h"),
             "7d" => predict_timeframe(current_floor_price, market_data, ai_analysis, "7d"),
             "30d" => predict_timeframe(current_floor_price, market_data, ai_analysis, "30d")
         )
-        
         # Calculate overall confidence
         overall_confidence = calculate_overall_confidence(market_data, ai_analysis)
-        
         @info "Price prediction completed"
         return Dict(
             "success" => true,
@@ -50,7 +65,6 @@ function predict_prices(market_data::Dict, ai_analysis::Dict)
             "overall_confidence" => overall_confidence,
             "base_price" => current_floor_price
         )
-        
     catch e
         @error "Price prediction failed: $e"
         return Dict("success" => false, "error" => string(e))
@@ -62,33 +76,44 @@ Predict price for specific timeframe
 """
 function predict_timeframe(base_price::Float64, market_data::Dict, ai_analysis::Dict, timeframe::String)
     try
+        # Defensive checks for input data
+        if isnothing(base_price) || isnan(base_price) || base_price <= 0
+            return Dict(
+                "direction" => "stable",
+                "percentage_change" => 0.0,
+                "confidence" => 50,
+                "price_target" => 0.0,
+                "error" => "Invalid or missing base price"
+            )
+        end
+        if !haskey(market_data, "volume_24h") || isnothing(market_data["volume_24h"])
+            market_data["volume_24h"] = 0.0
+        end
+        if !haskey(ai_analysis, "market_sentiment") || isnothing(ai_analysis["market_sentiment"])
+            ai_analysis["market_sentiment"] = "neutral"
+        end
+        if !haskey(ai_analysis, "reasoning_steps") || isnothing(ai_analysis["reasoning_steps"])
+            ai_analysis["reasoning_steps"] = [Dict()]
+        end
         # Get timeframe-specific factors
         factors = get_timeframe_factors(timeframe)
-        
         # Extract relevant data
         volume_24h = get(market_data, "volume_24h", 0)
         sentiment_score = get(get(ai_analysis, "reasoning_steps", [Dict()])[1], "confidence", 70) / 100
         market_sentiment = get(ai_analysis, "market_sentiment", "neutral")
-        
         # Calculate base change percentage
         base_change = calculate_base_change(market_sentiment, timeframe)
-        
         # Apply volume factor
         volume_factor = calculate_volume_factor(volume_24h, timeframe)
-        
         # Apply sentiment factor
         sentiment_factor = calculate_sentiment_factor(sentiment_score, timeframe)
-        
         # Calculate final percentage change
         percentage_change = base_change * volume_factor * sentiment_factor
-        
         # Add randomness for market unpredictability
         noise_factor = (rand() - 0.5) * factors["noise_amplitude"]
         percentage_change += noise_factor
-        
         # Calculate target price
         price_target = base_price * (1 + percentage_change / 100)
-        
         # Determine direction
         direction = if percentage_change > 1
             "up"
@@ -97,24 +122,22 @@ function predict_timeframe(base_price::Float64, market_data::Dict, ai_analysis::
         else
             "stable"
         end
-        
         # Calculate confidence for this prediction
         confidence = calculate_timeframe_confidence(market_data, ai_analysis, timeframe)
-        
         return Dict(
             "direction" => direction,
             "percentage_change" => round(percentage_change, digits=1),
             "confidence" => confidence,
             "price_target" => round(price_target, digits=2)
         )
-        
     catch e
         @warn "Timeframe prediction failed for $timeframe: $e"
         return Dict(
             "direction" => "stable",
             "percentage_change" => 0.0,
             "confidence" => 50,
-            "price_target" => base_price
+            "price_target" => base_price,
+            "error" => string(e)
         )
     end
 end
