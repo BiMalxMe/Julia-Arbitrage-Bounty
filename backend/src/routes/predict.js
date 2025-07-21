@@ -10,6 +10,11 @@ const rateLimitStore = new Map();
 
 // Simple rate limiting middleware
 const rateLimit = (req, res, next) => {
+  // In development, we can bypass the rate limiter for easier testing.
+  if (process.env.NODE_ENV === 'development') {
+    return next();
+  }
+
   const clientId = req.ip;
   const now = Date.now();
   const windowMs = 15 * 60 * 1000; // 15 minutes
@@ -101,10 +106,10 @@ router.post('/predict', rateLimit, async (req, res) => {
 });
 
 /**
- * GET /api/collections/search?q=query
+ * GET /api/search
  * Search NFT collections
  */
-router.get('/collections/search', async (req, res) => {
+router.get('/search', async (req, res) => {
   try {
     const { q: query } = req.query;
 
@@ -126,38 +131,6 @@ router.get('/collections/search', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Search failed',
-      timestamp: new Date().toISOString()
-    });
-  }
-});
-
-/**
- * GET /api/collection/:address/history
- * Get historical data for a collection
- */
-router.get('/collection/:address/history', async (req, res) => {
-  try {
-    const { address } = req.params;
-
-    if (!nftService.isValidAddress(address)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid address format'
-      });
-    }
-
-    console.log(`Fetching history for: ${address}`);
-
-    // Generate mock historical data for demo
-    const history = nftService.generateMockHistory(address);
-    
-    res.json(history);
-
-  } catch (error) {
-    console.error('History endpoint error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch historical data',
       timestamp: new Date().toISOString()
     });
   }

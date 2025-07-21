@@ -88,18 +88,13 @@ class JuliaService {
         // Execute actual Julia agents
         return await this.executeJuliaAgents(collectionAddress);
       } else {
-        // Fallback to mock data for development
-        console.log('Using mock data - Julia not available');
-        const mockResult = await this.generateMockPrediction(collectionAddress);
-        
+        // No mock data fallback
         return {
-          success: true,
-          data: mockResult,
-          processing_time: 2.3,
-          timestamp: new Date().toISOString()
+          success: false,
+          error: "Julia is not available and no mock data is allowed.",
+          errors: ["Julia is not available and no mock data is allowed."]
         };
       }
-
     } catch (error) {
       console.error('Julia pipeline execution failed:', error);
       return {

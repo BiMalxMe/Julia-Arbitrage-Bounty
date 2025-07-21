@@ -23,7 +23,7 @@ const SWARM_COORDINATOR_CONFIG = Dict(
 )
 
 # Initialize coordinator agent
-coordinator = JuliaOS.Agent(SWARM_COORDINATOR_CONFIG)
+coordinator = JuliaOS.create_agent(SWARM_COORDINATOR_CONFIG)
 
 """
 Execute complete NFT price prediction pipeline
@@ -63,8 +63,7 @@ function execute_prediction_pipeline(collection_address::String)
         
         if !analysis_result["success"]
             push!(result["errors"], "AI analysis failed: $(analysis_result["error"])")
-            # Continue with fallback analysis
-            analysis_result["analysis"] = create_fallback_analysis(collection_data)
+            return result
         end
         
         ai_analysis = analysis_result["analysis"]
@@ -124,35 +123,6 @@ function execute_with_retry(func::Function, max_retries::Int)
             sleep(1)  # Brief delay between retries
         end
     end
-end
-
-"""
-Create fallback analysis when AI fails
-"""
-function create_fallback_analysis(collection_data::Dict)
-    @info "Creating fallback analysis"
-    
-    floor_price = get(get(collection_data, "market_data", Dict()), "floor_price", 0)
-    volume_24h = get(get(collection_data, "market_data", Dict()), "volume_24h", 0)
-    
-    return Dict(
-        "market_outlook" => "Fallback analysis based on quantitative data only.",
-        "sentiment_analysis" => "Unable to perform sentiment analysis due to AI service unavailability.",
-        "risk_factors" => ["High market volatility", "AI analysis unavailable", "Limited data quality"],
-        "bullish_factors" => ["Established collection", "Active market"],
-        "confidence_score" => 50,
-        "data_quality" => 60,
-        "reasoning_steps" => [
-            Dict(
-                "factor" => "Volume Analysis",
-                "impact" => volume_24h > 50 ? "positive" : "negative",
-                "confidence" => 60,
-                "explanation" => "Analysis based on trading volume only"
-            )
-        ],
-        "market_sentiment" => "neutral",
-        "ai_reasoning" => "Fallback analysis used due to AI service unavailability."
-    )
 end
 
 """

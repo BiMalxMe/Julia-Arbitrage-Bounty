@@ -1,24 +1,20 @@
 import axios from 'axios';
-import { PredictionResponse, SearchResult, AgentStatus, MarketData } from '../types';
+import { PredictionResponse, NFTCollection, AgentStatus, MarketData } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+const apiClient = axios.create({
+  baseURL: API_URL,
 });
 
 // Request interceptor for logging
-api.interceptors.request.use((config) => {
+apiClient.interceptors.request.use((config) => {
   console.log(`Making request to: ${config.method?.toUpperCase()} ${config.url}`);
   return config;
 });
 
 // Response interceptor for error handling
-api.interceptors.response.use(
+apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     console.error('API Error:', error.response?.data || error.message);
@@ -27,43 +23,33 @@ api.interceptors.response.use(
 );
 
 export const nftApi = {
-  // Main prediction endpoint
-  async predictPrice(collectionAddress: string): Promise<PredictionResponse> {
-    const response = await api.post<PredictionResponse>('/predict', {
-      collection_address: collectionAddress,
-    });
+  predictPrice: async (collection_address: string): Promise<PredictionResponse> => {
+    const response = await apiClient.post('/predict', { collection_address });
     return response.data;
   },
 
-  // Search collections
-  async searchCollections(query: string): Promise<SearchResult[]> {
-    const response = await api.get<SearchResult[]>(`/collections/search?q=${encodeURIComponent(query)}`);
-    return response.data;
-  },
-
-  // Get collection history
-  async getCollectionHistory(address: string): Promise<MarketData> {
-    const response = await api.get<MarketData>(`/collection/${address}/history`);
+  searchCollections: async (query: string): Promise<NFTCollection[]> => {
+    const response = await apiClient.get<NFTCollection[]>('/search', { params: { q: query } });
     return response.data;
   },
 
   // Agent health check
   async getAgentStatus(): Promise<AgentStatus[]> {
-    const response = await api.get<AgentStatus[]>('/health');
+    const response = await apiClient.get<AgentStatus[]>('/health');
     return response.data;
   },
 
   // Get API status and configuration
   async getApiStatus() {
-    const response = await api.get('/status');
+    const response = await apiClient.get('/status');
     return response.data;
   },
 
   // Get available providers
   async getProviders() {
-    const response = await api.get('/providers');
+    const response = await apiClient.get('/providers');
     return response.data;
   }
 };
 
-export default api;
+export default apiClient;

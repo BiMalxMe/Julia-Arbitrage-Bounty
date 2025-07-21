@@ -80,61 +80,6 @@ class NFTService {
   }
 
   /**
-   * Generate mock historical data for demo
-   */
-  generateMockHistory(contractAddress) {
-    const now = new Date();
-    const days = 30;
-    
-    const labels = [];
-    const prices = [];
-    const volumes = [];
-    
-    const basePrice = 12.5 + (Math.random() - 0.5) * 5;
-    
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      labels.push(date.toISOString().split('T')[0]);
-      
-      // Generate realistic price movement
-      const trend = Math.sin(i / 5) * 2;
-      const noise = (Math.random() - 0.5) * 1.5;
-      const price = Math.max(0.1, basePrice + trend + noise);
-      prices.push(parseFloat(price.toFixed(2)));
-      
-      // Generate volume data
-      const volume = Math.random() * 800 + 200;
-      volumes.push(parseFloat(volume.toFixed(1)));
-    }
-    
-    // Generate future predictions
-    const predictionPrices = [];
-    const confidenceBands = [];
-    
-    for (let i = 1; i <= 5; i++) {
-      const prediction = prices[prices.length - 1] * (1 + (Math.random() - 0.5) * 0.2);
-      predictionPrices.push(parseFloat(prediction.toFixed(2)));
-      
-      const confidence = prediction * 0.1;
-      confidenceBands.push([
-        parseFloat((prediction - confidence).toFixed(2)),
-        parseFloat((prediction + confidence).toFixed(2))
-      ]);
-    }
-    
-    return {
-      labels,
-      prices,
-      volumes,
-      predictions: {
-        prices: predictionPrices,
-        confidence_bands: confidenceBands
-      }
-    };
-  }
-
-  /**
    * Validate and clean collection data
    */
   validateCollectionData(data) {

@@ -23,7 +23,7 @@ using JSON3
 )
 
 # Initialize agent
-agent = JuliaOS.Agent(DATA_COLLECTOR_CONFIG)
+agent = JuliaOS.create_agent(DATA_COLLECTOR_CONFIG)
 
 """
 Collect comprehensive data for an NFT collection
@@ -63,33 +63,64 @@ function collect_collection_data(collection_address::String)
 end
 
 """
-Collect data from OpenSea API (free tier)
+Collect data from OpenSea API (v2)
 """
 function collect_opensea_data(collection_address::String)
     try
+        # Special case for CryptoPunks, which has a different API structure
+        if collection_address == "0xb47e3cd837dDF8e4c57F05d70Ab865de6e193BBB"
+            @info "Using CryptoPunks-specific logic for OpenSea data."
+            # For CryptoPunks, we can often rely on Alchemy or other sources,
+            # but we can also use a simplified OpenSea call or a different dedicated API.
+            # For now, we will return a result that lets Alchemy take precedence.
+            return Dict("source" => "opensea_v2", "floor_price" => nothing)
+        end
+
         headers = Dict(
             "Accept" => "application/json",
             "X-API-KEY" => get(ENV, "OPENSEA_API_KEY", "")
         )
         
-        # Collection stats endpoint
-        url = "https://api.opensea.io/api/v1/collection/$collection_address/stats"
-        response = HTTP.get(url, headers=headers)
+        # --- Step 1: Get the collection slug from the contract address ---
+        # The v2 API uses a 'slug' to identify collections, not the contract address.
+        slug_url = "https://api.opensea.io/api/v2/chain/ethereum/contract/$(collection_address)/nfts"
+        slug_response = HTTP.get(slug_url, headers=headers)
         
-        if response.status == 200
-            data = JSON3.read(response.body)
+        collection_slug = ""
+        if slug_response.status == 200
+            slug_data = JSON3.read(slug_response.body)
+            if !isempty(get(slug_data, :nfts, []))
+                collection_slug = get(slug_data.nfts[1], :collection, "")
+            end
+        else
+            @warn "OpenSea v2 NFT endpoint returned status $(slug_response.status). Could not retrieve collection slug."
+            return Dict("error" => "API error", "status" => slug_response.status)
+        end
+        
+        if isempty(collection_slug)
+            @warn "Could not determine collection slug for $collection_address"
+            return Dict("error" => "Could not determine collection slug")
+        end
+
+        # --- Step 2: Get collection stats using the slug ---
+        stats_url = "https://api.opensea.io/api/v2/collections/$(collection_slug)/stats"
+        stats_response = HTTP.get(stats_url, headers=headers)
+        
+        if stats_response.status == 200
+            data = JSON3.read(stats_response.body)
+            total = get(data, :total, Dict())
             return Dict(
-                "floor_price" => get(data.stats, "floor_price", 0),
-                "market_cap" => get(data.stats, "market_cap", 0),
-                "volume_24h" => get(data.stats, "one_day_volume", 0),
-                "volume_7d" => get(data.stats, "seven_day_volume", 0),
-                "total_supply" => get(data.stats, "total_supply", 0),
-                "num_owners" => get(data.stats, "num_owners", 0),
-                "source" => "opensea"
+                "floor_price" => get(total, :floor_price, 0),
+                "market_cap" => get(total, :market_cap, 0),
+                "volume_24h" => get(total, :volume, 0),
+                "volume_7d" => get(get(data, :intervals, [])[1], :volume, 0), # Assuming first interval is 7d
+                "total_supply" => get(total, :supply, 0),
+                "num_owners" => get(total, :owner_count, 0),
+                "source" => "opensea_v2"
             )
         else
-            @warn "OpenSea API returned status $(response.status)"
-            return Dict("error" => "API error", "status" => response.status)
+            @warn "OpenSea v2 stats endpoint returned status $(stats_response.status)"
+            return Dict("error" => "API error", "status" => stats_response.status)
         end
         
     catch e
@@ -106,25 +137,45 @@ function collect_alchemy_data(collection_address::String)
         api_key = get(ENV, "ALCHEMY_API_KEY", "")
         base_url = "https://eth-mainnet.g.alchemy.com/nft/v2/$api_key"
         
-        # Get collection metadata
-        url = "$base_url/getContractMetadata?contractAddress=$collection_address"
-        response = HTTP.get(url)
+        alchemy_data = Dict("source" => "alchemy")
+
+        # --- Get collection metadata ---
+        metadata_url = "$base_url/getContractMetadata?contractAddress=$collection_address"
+        metadata_response = HTTP.get(metadata_url)
         
-        if response.status == 200
-            data = JSON3.read(response.body)
-            return Dict(
-                "name" => get(data.contractMetadata, "name", ""),
-                "symbol" => get(data.contractMetadata, "symbol", ""),
-                "total_supply" => get(data.contractMetadata, "totalSupply", 0),
-                "contract_type" => get(data.contractMetadata, "tokenType", ""),
-                "description" => get(data.contractMetadata, "description", ""),
-                "image" => get(data.contractMetadata, "image", ""),
-                "source" => "alchemy"
-            )
+        if metadata_response.status == 200
+            metadata = JSON3.read(metadata_response.body)
+            alchemy_data["name"] = get(get(metadata, :contractMetadata, Dict()), :name, "")
+            alchemy_data["symbol"] = get(get(metadata, :contractMetadata, Dict()), :symbol, "")
+            alchemy_data["total_supply"] = get(get(metadata, :contractMetadata, Dict()), :totalSupply, 0)
+            alchemy_data["contract_type"] = get(get(metadata, :contractMetadata, Dict()), :tokenType, "")
+            alchemy_data["description"] = get(get(metadata, :contractMetadata, Dict()), :description, "")
+            alchemy_data["image"] = get(get(metadata, :contractMetadata, Dict()), :image, "")
         else
-            @warn "Alchemy API returned status $(response.status)"
-            return Dict("error" => "API error", "status" => response.status)
+            @warn "Alchemy getContractMetadata API returned status $(metadata_response.status)"
         end
+
+        # --- Get floor price ---
+        floor_price_url = "$base_url/getFloorPrice?contractAddress=$collection_address"
+        floor_price_response = HTTP.get(floor_price_url)
+
+        if floor_price_response.status == 200
+            floor_data = JSON3.read(floor_price_response.body)
+            
+            opensea_fp = get(get(floor_data, :openSea, Dict()), :floorPrice, nothing)
+            looksrare_fp = get(get(floor_data, :looksRare, Dict()), :floorPrice, nothing)
+
+            # Prioritize OpenSea floor price from Alchemy, fallback to LooksRare
+            if !isnothing(opensea_fp) && opensea_fp > 0
+                alchemy_data["floor_price"] = opensea_fp
+            elseif !isnothing(looksrare_fp) && looksrare_fp > 0
+                alchemy_data["floor_price"] = looksrare_fp
+            end
+        else
+             @warn "Alchemy getFloorPrice API returned status $(floor_price_response.status)"
+        end
+        
+        return alchemy_data
         
     catch e
         @warn "Alchemy data collection failed: $e"
@@ -220,26 +271,25 @@ Aggregate market data from multiple sources
 """
 function aggregate_market_data(sources::Dict)
     market_data = Dict()
-    
-    if haskey(sources, "opensea") && haskey(sources["opensea"], "floor_price") && sources["opensea"]["floor_price"] > 0
+    # Try OpenSea first
+    if haskey(sources, "opensea") && !haskey(sources["opensea"], "error")
         opensea = sources["opensea"]
         market_data["floor_price"] = get(opensea, "floor_price", 0)
         market_data["volume_24h"] = get(opensea, "volume_24h", 0)
         market_data["volume_7d"] = get(opensea, "volume_7d", 0)
         market_data["market_cap"] = get(opensea, "market_cap", 0)
         market_data["num_owners"] = get(opensea, "num_owners", 0)
-    else
-        # Fallback: use a mock floor price if OpenSea fails or returns 0
-        @warn "OpenSea floor price missing or invalid, using fallback mock price"
-        # Use a deterministic mock price based on collection address hash for consistency
-        fallback_price = 10.0 + rand() * 5.0
-        market_data["floor_price"] = fallback_price
-        market_data["volume_24h"] = 0.0
-        market_data["volume_7d"] = 0.0
-        market_data["market_cap"] = 0.0
-        market_data["num_owners"] = 0
     end
-    
+    # Fallback: If floor_price is missing/zero, try Alchemy
+    if !haskey(market_data, "floor_price") || isnothing(market_data["floor_price"]) || market_data["floor_price"] <= 0
+        if haskey(sources, "alchemy") && haskey(sources["alchemy"], "floor_price") && !isnothing(sources["alchemy"]["floor_price"]) && sources["alchemy"]["floor_price"] > 0
+            market_data["floor_price"] = sources["alchemy"]["floor_price"]
+        else
+            @warn "No valid floor_price from OpenSea or Alchemy."
+            # Set to nothing to indicate that no valid price was found
+            market_data["floor_price"] = nothing
+        end
+    end
     return market_data
 end
 

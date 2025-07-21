@@ -16,7 +16,7 @@ using Random
 using LinearAlgebra
 using StatsBase
 
-export Agent, AgentConfig, AgentState, AgentCapability
+export create_agent, Agent, AgentConfig, AgentState, AgentCapability
 export start_agent, stop_agent, send_message, get_agent_status
 export register_capability, execute_capability, get_agent_metrics
 export rate_limited_request, safe_json_parse, validate_api_response
@@ -69,12 +69,13 @@ mutable struct Agent
     capabilities::Dict{String, AgentCapability}
     message_queue::Vector{Dict{String, Any}}
     error_log::Vector{Dict{String, Any}}
+    useLLM::Function
 end
 
 """
 Create a new agent with the given configuration
 """
-function Agent(config_dict::Dict{String, Any})
+function create_agent(config_dict::Dict{String, Any})
     config = AgentConfig(
         get(config_dict, "name", "UnnamedAgent"),
         get(config_dict, "description", "A JuliaOS agent"),
@@ -95,7 +96,7 @@ function Agent(config_dict::Dict{String, Any})
         Dict{String, Any}()
     )
     
-    agent = Agent(config, state, Dict{String, AgentCapability}(), [], [])
+    agent = Agent(config, state, Dict{String, AgentCapability}(), [], [], useLLM)
     
     # Initialize default capabilities
     initialize_default_capabilities(agent)
@@ -373,6 +374,75 @@ function collect_metrics_capability(agent::Agent, metric_name::String, value::An
     return agent.state.metrics[metric_name]
 end
 
+"""
+Use a Large Language Model (LLM) for analysis.
+This function is attached to the Agent struct.
+It returns a tuple: (success::Bool, result::String)
+On failure, success is false and result is the error message.
+"""
+function useLLM(provider::String, model::String, prompt::String; 
+                api_key::String="", base_url::String="")
+    
+    headers = Dict("Content-Type" => "application/json")
+    
+    # Provider-specific configurations
+    if provider == "ollama"
+        url = "http://localhost:11434/api/generate"
+        body = Dict(
+            "model" => model,
+            "prompt" => prompt,
+            "stream" => false
+        )
+    elseif provider == "huggingface"
+        url = "https://api-inference.huggingface.co/models/gpt2"
+        headers["Authorization"] = "Bearer hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        body = Dict(
+            "inputs" => prompt,
+            "parameters" => Dict(
+                "max_new_tokens" => 100,
+                "temperature" => 0.7,
+                "return_full_text" => false
+            )
+        )
+    elseif provider == "groq"
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers["Authorization"] = "Bearer $(get(ENV, "GROQ_API_KEY", ""))"
+        body = Dict(
+            "model" => model,
+            "messages" => [Dict("role" => "user", "content" => prompt)]
+        )
+    else
+        error_msg = "Unsupported LLM provider: $provider"
+        @error error_msg
+        return (false, error_msg)
+    end
+
+    try
+        response = HTTP.post(url, headers, JSON3.write(body); readtimeout=60)
+        
+        if response.status == 200
+            data = JSON3.read(response.body)
+            result_text = ""
+            if provider == "ollama"
+                result_text = get(data, :response, "")
+            elseif provider == "huggingface"
+                result_text = get(data[1], :generated_text, "")
+            elseif provider == "groq"
+                result_text = get(data.choices[1].message, :content, "")
+            end
+            return (true, result_text)
+        else
+            error_msg = "LLM provider $provider returned status $(response.status): $(String(response.body))"
+            @warn error_msg
+            return (false, error_msg)
+        end
+    catch e
+        error_msg = "LLM request to $provider failed: $(sprint(showerror, e))"
+        @error error_msg
+        return (false, error_msg)
+    end
+end
+
 # Utility functions
 
 """
@@ -436,5 +506,10 @@ function format_success_response(data::Any, context::String="")
         "timestamp" => now()
     )
 end
+
+precompile(create_agent, (Dict{String, Any},))
+precompile(start_agent, (Agent,))
+precompile(stop_agent, (Agent,))
+precompile(get_agent_status, (Agent,))
 
 end # module JuliaOS

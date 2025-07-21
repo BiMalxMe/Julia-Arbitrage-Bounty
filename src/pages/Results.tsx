@@ -21,23 +21,8 @@ export const Results: React.FC = () => {
   useEffect(() => {
     if (!prediction) {
       navigate('/');
-      return;
     }
-
-    // Load market data for charts
-    loadMarketData();
   }, [prediction, navigate]);
-
-  const loadMarketData = async () => {
-    if (!prediction?.data.collection.address) return;
-
-    try {
-      const data = await nftApi.getCollectionHistory(prediction.data.collection.address);
-      setMarketData(data);
-    } catch (error) {
-      console.error('Failed to load market data:', error);
-    }
-  };
 
   const handleRefresh = async () => {
     if (!prediction?.data.collection.address) return;

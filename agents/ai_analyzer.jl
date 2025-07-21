@@ -19,7 +19,7 @@ using JSON3
 )
 
 # Initialize agent
-agent = JuliaOS.Agent(AI_ANALYZER_CONFIG)
+agent = JuliaOS.create_agent(AI_ANALYZER_CONFIG)
 
 """
 Analyze collection data using LLM integration
@@ -31,32 +31,26 @@ function analyze_collection(data::Dict)
         # Prepare analysis prompt
         prompt = create_analysis_prompt(data)
         
-        # Try multiple LLM providers with fallbacks
+        # Try HuggingFace first
         analysis_result = nothing
-        providers = [
-            ("ollama", "llama2"),
-            ("huggingface", "meta-llama/Llama-2-7b-chat-hf"),
-            ("groq", "llama2-70b-4096")
-        ]
+        detailed_errors = []
         
-        for (provider, model) in providers
-            try
-                @info "Attempting analysis with $provider:$model"
-                analysis_result = agent.useLLM(provider, model, prompt)
-                if !isnothing(analysis_result)
-                    @info "Analysis successful with $provider"
-                    break
-                end
-            catch e
-                @warn "Provider $provider failed: $e"
-                continue
-            end
+        # Try HuggingFace first
+        @info "Attempting analysis with HuggingFace"
+        success, result = agent.useLLM("huggingface", "gpt2", prompt)
+        if success
+            @info "Analysis successful with HuggingFace"
+            analysis_result = result
+        else
+            @warn "HuggingFace failed: $result"
+            push!(detailed_errors, "Provider 'huggingface': $result")
         end
         
-        # Fallback to rule-based analysis if all AI fails
+        # If all LLMs fail, return detailed errors
         if isnothing(analysis_result)
-            @warn "All AI providers failed, using rule-based analysis"
-            analysis_result = rule_based_analysis(data)
+            @error "All AI providers failed"
+            error_message = "All AI providers failed. Details: [ " * join(detailed_errors, ", ") * " ]"
+            return Dict("success" => false, "error" => error_message)
         else
             analysis_result = process_llm_response(analysis_result, data)
         end
@@ -138,7 +132,7 @@ function process_llm_response(llm_response::String, data::Dict)
         
     catch e
         @warn "Failed to process LLM response: $e"
-        return rule_based_analysis(data)
+        return Dict("success" => false, "error" => string(e))
     end
 end
 

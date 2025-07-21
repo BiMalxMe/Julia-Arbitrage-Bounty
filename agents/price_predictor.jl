@@ -19,7 +19,7 @@ using Dates
 )
 
 # Initialize agent
-agent = JuliaOS.Agent(PRICE_PREDICTOR_CONFIG)
+agent = JuliaOS.create_agent(PRICE_PREDICTOR_CONFIG)
 
 """
 Generate price predictions for multiple timeframes
@@ -36,17 +36,9 @@ function predict_prices(market_data::Dict, ai_analysis::Dict)
         
         # Defensive check for invalid base price
         if isnothing(current_floor_price) || isnan(current_floor_price) || current_floor_price <= 0
-            error_msg = "Invalid or missing base price for prediction."
-            predictions = Dict(
-                "24h" => Dict("direction" => "stable", "percentage_change" => 0.0, "confidence" => 50, "price_target" => 0.0, "error" => error_msg),
-                "7d" => Dict("direction" => "stable", "percentage_change" => 0.0, "confidence" => 50, "price_target" => 0.0, "error" => error_msg),
-                "30d" => Dict("direction" => "stable", "percentage_change" => 0.0, "confidence" => 50, "price_target" => 0.0, "error" => error_msg)
-            )
+            error_msg = "Invalid or missing base price for prediction. No fallback allowed."
             return Dict(
                 "success" => false,
-                "predictions" => predictions,
-                "overall_confidence" => 50,
-                "base_price" => current_floor_price,
                 "error" => error_msg
             )
         end
@@ -310,3 +302,6 @@ end
 
 # Export main functions for agent coordinator
 export predict_prices, assess_risks
+
+# curl -X POST http://localhost:3001/api/predict -H "Content-Type: application/json" -d '{"collection_address":"0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D"}'
+# {"success":true,"data":{"collection":{"name":"Bored Ape Yacht Club","address":"0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D","description":"Bored Ape Yacht Club is a collection of unique NFTs with strong community and utility.","image":"https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400","floor_price":13.26,"market_cap":132568,"volume_24h":852,"total_supply":10000},"predictions":{"24h":{"direction":"up","percentage_change":-2.9,"confidence":72,"price_target":13.11},"7d":{"direction":"stable","percentage_change":5.3,"confidence":66,"price_target":12.8},"30d":{"direction":"up","percentage_change":-9.7,"confidence":49,"price_target":13.5}},"ai_reasoning":"Based on comprehensive analysis of market data, social sentiment, and onchain metrics, the collection shows mixed signals. Short-term momentum is supported by increased social activity and recent sales volume, but longer-term trends suggest potential headwinds from broader market conditions and evolving collector preferences.","reasoning_steps":[{"factor":"Social Media Sentiment","impact":"neutral","confidence":75,"explanation":"Twitter mentions increased 32% with predominantly positive sentiment from verified collectors and influencers."},{"factor":"Whale Activity","impact":"negative","confidence":77,"explanation":"Large wallet addresses have been accumulating, with 3 transactions above 50 ETH in the past 48 hours."},{"factor":"Market Conditions","impact":"negative","confidence":67,"explanation":"Overall NFT market volume decreased 8% week-over-week, creating headwinds for most collections."},{"factor":"Technical Analysis","impact":"neutral","confidence":81,"explanation":"Price action shows support at current levels with potential for upward breakout if volume increases."}],"risk_factors":["High market volatility affecting all NFT collections","Potential decrease in overall market liquidity","Regulatory uncertainty in digital assets space","Competition from new collection launches","Macroeconomic headwinds affecting risk assets"],"market_sentiment":"bullish","confidence_score":70,"data_quality":92},"timestamp":"2025-07-21T04:41:53.661Z","processing_time":4.556}%     
