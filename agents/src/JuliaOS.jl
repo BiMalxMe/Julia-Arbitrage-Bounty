@@ -391,7 +391,8 @@ function useLLM(provider::String, model::String, prompt::String;
         body = Dict(
             "model" => model,
             "prompt" => prompt,
-            "stream" => false
+            "stream" => false,
+            "raw" => false
         )
     elseif provider == "huggingface"
         url = "https://api-inference.huggingface.co/models/gpt2"

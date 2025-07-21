@@ -31,19 +31,29 @@ function analyze_collection(data::Dict)
         # Prepare analysis prompt
         prompt = create_analysis_prompt(data)
         
-        # Try HuggingFace first
+        # Try Ollama first
         analysis_result = nothing
         detailed_errors = []
         
-        # Try HuggingFace first
-        @info "Attempting analysis with HuggingFace"
-        success, result = agent.useLLM("huggingface", "gpt2", prompt)
+        # Try Ollama first
+        @info "Attempting analysis with Ollama"
+        success, result = agent.useLLM("ollama", "llama2", prompt)
         if success
-            @info "Analysis successful with HuggingFace"
+            @info "Analysis successful with Ollama"
             analysis_result = result
         else
-            @warn "HuggingFace failed: $result"
-            push!(detailed_errors, "Provider 'huggingface': $result")
+            @warn "Ollama failed: $result"
+            push!(detailed_errors, "Provider 'ollama': $result")
+            
+            # Try HuggingFace as fallback
+            @info "Attempting fallback to HuggingFace"
+            success, result = agent.useLLM("huggingface", "gpt2", prompt)
+            if success
+                @info "Analysis successful with HuggingFace"
+                analysis_result = result
+            else
+                push!(detailed_errors, "Provider 'huggingface': $result")
+            end
         end
         
         # If all LLMs fail, return detailed errors
