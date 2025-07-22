@@ -191,48 +191,62 @@ class NFTService {
   }
 
   /**
-   * Fetch live market data for a collection from OpenSea
+   * Fetch collection stats from OpenSea v2 API (dynamic market data)
    */
-  async getCollectionMarketData(contractAddress) {
+  async fetchOpenSeaV2Stats(collectionSlug) {
     try {
-      // OpenSea expects a slug, but if you only have contract address, you may need to map it to a slug.
-      // For now, try to fetch stats by contract address (using v2 API if available, else fallback to mock)
       const headers = {
         'Accept': 'application/json'
       };
       if (process.env.OPENSEA_API_KEY) {
         headers['X-API-KEY'] = process.env.OPENSEA_API_KEY;
       }
-      // Try OpenSea v2 API (contract address based)
-      const v2url = `https://api.opensea.io/api/v2/collections/${contractAddress}`;
-      try {
-        const v2resp = await axios.get(v2url, { headers, timeout: 10000 });
-        const stats = v2resp.data?.collection?.stats;
-        if (stats) {
-          return {
-            floor_price: stats.floor_price,
-            market_cap: stats.market_cap,
-            volume_24h: stats.one_day_volume,
-            total_supply: stats.total_supply,
-          };
-        }
-      } catch (e) {
-        // fallback to v1 below
-      }
-      // Fallback: try v1 API with slug (not always possible)
-      // If you have a mapping from address to slug, use it here
-      // Otherwise, fallback to mock
-      throw new Error('OpenSea API did not return valid stats');
-    } catch (error) {
-      console.warn('OpenSea market data error:', error.message);
-      // Fallback mock data
+      const response = await axios.get(
+        `https://api.opensea.io/api/v2/collections/${collectionSlug}/stats`,
+        { headers, timeout: 10000 }
+      );
+      const stats = response.data;
       return {
-        floor_price: 12.5 + Math.random() * 2,
-        market_cap: 125000 + Math.floor(Math.random() * 10000),
-        volume_24h: 500 + Math.floor(Math.random() * 100),
-        total_supply: 10000,
+        market_cap: stats?.total?.market_cap,
+        volume_24h: stats?.total?.volume,
+        floor_price: stats?.floor_price
       };
+    } catch (error) {
+      console.warn('OpenSea v2 API error:', error.message);
+      throw error;
     }
+  }
+
+  /**
+   * Fetch OpenSea collection slug from contract address (v2 API)
+   */
+  async fetchOpenSeaSlugByAddress(contractAddress) {
+    try {
+      const headers = {
+        'Accept': 'application/json'
+      };
+      if (process.env.OPENSEA_API_KEY) {
+        headers['X-API-KEY'] = process.env.OPENSEA_API_KEY;
+      }
+      const response = await axios.get(
+        `https://api.opensea.io/api/v2/chain/ethereum/contract/${contractAddress}`,
+        { headers, timeout: 10000 }
+      );
+      // The slug is typically in response.data.collection.slug
+      return response.data?.collection?.slug;
+    } catch (error) {
+      console.warn('OpenSea v2 contract lookup error:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch OpenSea v2 stats by contract address (address -> slug -> stats)
+   */
+  async fetchOpenSeaV2StatsByAddress(contractAddress) {
+    const slug = await this.fetchOpenSeaSlugByAddress(contractAddress);
+    if (!slug) throw new Error('Collection slug not found for contract address');
+    return this.fetchOpenSeaV2Stats(slug);
   }
 }
 

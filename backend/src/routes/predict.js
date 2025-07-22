@@ -227,32 +227,4 @@ router.get('/stats', (req, res) => {
   }
 });
 
-/**
- * GET /api/collection/:address/market
- * Fetch live market data for a collection
- */
-router.get('/collection/:address/market', async (req, res) => {
-  const { address } = req.params;
-  try {
-    // Try to fetch from OpenSea or your preferred provider
-    // For now, use nftService.getCollectionMarketData or mock data
-    let data;
-    if (nftService.getCollectionMarketData) {
-      data = await nftService.getCollectionMarketData(address);
-    } else {
-      // Fallback mock data
-      data = {
-        floor_price: 12.5 + Math.random() * 2,
-        market_cap: 125000 + Math.floor(Math.random() * 10000),
-        volume_24h: 500 + Math.floor(Math.random() * 100),
-        total_supply: 10000,
-      };
-    }
-    res.json(data);
-  } catch (error) {
-    console.error('Failed to fetch market data:', error);
-    res.status(500).json({ error: 'Failed to fetch market data' });
-  }
-});
-
 export default router;

@@ -388,7 +388,8 @@ function useLLM(provider::String, model::String, prompt::String;
     # Provider-specific configurations
     if provider == "openrouter"
         url = "https://openrouter.ai/api/v1/chat/completions"
-        headers["Authorization"] = "Bearer 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"
+        api_key = get(ENV, "OPENROUTER_API_KEY", "")
+        headers["Authorization"] = "Bearer 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 "
         body = Dict(
             "model" => "deepseek/deepseek-r1-0528:free",
             "messages" => [
@@ -420,7 +421,7 @@ function useLLM(provider::String, model::String, prompt::String;
     end
 
     try
-        response = HTTP.post(url, headers, JSON3.write(body); readtimeout=120)
+        response = HTTP.post(url, headers, JSON3.write(body); readtimeout=300)
         
         if response.status == 200
             data = JSON3.read(response.body)

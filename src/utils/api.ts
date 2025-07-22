@@ -49,12 +49,7 @@ export const nftApi = {
   async getProviders() {
     const response = await apiClient.get('/providers');
     return response.data;
-  },
-
-  getMarketData: async (collection_address: string): Promise<MarketData> => {
-    const response = await apiClient.get(`/collection/${collection_address}/market`);
-    return response.data;
-  },
+  }
 };
 
 export default apiClient;
