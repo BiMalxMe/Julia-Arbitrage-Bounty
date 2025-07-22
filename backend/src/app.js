@@ -97,7 +97,7 @@ const server = app.listen(PORT, () => {
   console.log(`🚀 JuliaOS NFT Predictor Backend running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-  console.log(`🧠 AI Provider: ${process.env.DEFAULT_LLM_PROVIDER || 'ollama'}`);
+  console.log(`🧠 AI Provider: ${process.env.DEFAULT_LLM_PROVIDER || 'openrouter'}`);
 });
 
 export default app;

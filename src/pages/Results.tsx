@@ -24,6 +24,16 @@ export const Results: React.FC = () => {
     }
   }, [prediction, navigate]);
 
+  useEffect(() => {
+    if (prediction?.data.collection.address) {
+      setLoading(true);
+      nftApi.getMarketData(prediction.data.collection.address)
+        .then(setMarketData)
+        .catch((err) => console.error('Failed to fetch market data:', err))
+        .finally(() => setLoading(false));
+    }
+  }, [prediction]);
+
   const handleRefresh = async () => {
     if (!prediction?.data.collection.address) return;
 
@@ -31,8 +41,11 @@ export const Results: React.FC = () => {
     try {
       const newPrediction = await nftApi.predictPrice(prediction.data.collection.address);
       setPrediction(newPrediction);
+      // Fetch new market data for the same address
+      const newMarketData = await nftApi.getMarketData(newPrediction.data.collection.address);
+      setMarketData(newMarketData);
     } catch (error) {
-      console.error('Failed to refresh prediction:', error);
+      console.error('Failed to refresh prediction or market data:', error);
     } finally {
       setRefreshing(false);
     }
@@ -47,6 +60,18 @@ export const Results: React.FC = () => {
   }
 
   const { collection, predictions, ai_reasoning, reasoning_steps, risk_factors, market_sentiment, confidence_score } = prediction.data;
+
+  function formatMarketCap(value: number) {
+    if (value >= 1_000_000_000) return (value / 1_000_000_000).toFixed(2) + 'B ETH';
+    if (value >= 1_000_000) return (value / 1_000_000).toFixed(2) + 'M ETH';
+    if (value >= 1_000) return (value / 1_000).toFixed(2) + 'K ETH';
+    return value + ' ETH';
+  }
+
+  const floorPrice = marketData?.floor_price ?? collection.floor_price;
+  const volume24h = marketData?.volume_24h ?? collection.volume_24h;
+  const marketCap = marketData?.market_cap ?? collection.market_cap;
+  const totalSupply = marketData?.total_supply ?? collection.total_supply;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
@@ -91,6 +116,7 @@ export const Results: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           className="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-8"
         >
+          {loading && <LoadingSpinner message="Fetching live market data..." />}
           <div className="flex items-start space-x-6">
             {collection.image && (
               <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-700">
@@ -122,51 +148,51 @@ export const Results: React.FC = () => {
               )}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <div className="text-lg font-bold text-emerald-400">{collection.floor_price} ETH</div>
+                  <div className="text-lg font-bold text-emerald-400">
+                    {floorPrice !== undefined ? `${floorPrice} ETH` : 'N/A'}
+                  </div>
                   <div className="text-xs text-gray-500">Floor Price</div>
                 </div>
-                {collection.volume_24h && (
-                  <div>
-                    <div className="text-lg font-bold text-purple-400">{collection.volume_24h} ETH</div>
-                    <div className="text-xs text-gray-500">24h Volume</div>
+                <div>
+                  <div className="text-lg font-bold text-purple-400">
+                    {volume24h !== undefined ? `${volume24h} ETH` : 'N/A'}
                   </div>
-                )}
-                {collection.market_cap && (
-                  <div>
-                    <div className="text-lg font-bold text-orange-400">{(collection.market_cap / 1000).toFixed(1)}K ETH</div>
-                    <div className="text-xs text-gray-500">Market Cap</div>
+                  <div className="text-xs text-gray-500">24h Volume</div>
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-orange-400 flex items-center space-x-1">
+                    <span>
+                      {marketCap !== undefined ? formatMarketCap(marketCap) : 'N/A'}
+                    </span>
+                    <span className="text-xs text-gray-500" title="Market Cap = Floor Price × Total Supply">ⓘ</span>
                   </div>
-                )}
-                {collection.total_supply && (
-                  <div>
-                    <div className="text-lg font-bold text-blue-400">{collection.total_supply.toLocaleString()}</div>
-                    <div className="text-xs text-gray-500">Total Supply</div>
+                  <div className="text-xs text-gray-500">Market Cap</div>
+                </div>
+                <div>
+                  <div className="text-lg font-bold text-blue-400">
+                    {totalSupply !== undefined ? totalSupply.toLocaleString() : 'N/A'}
                   </div>
-                )}
+                  <div className="text-xs text-gray-500">Total Supply</div>
+                </div>
               </div>
             </div>
           </div>
         </motion.div>
 
         {/* Results Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="space-y-8">
-            <PredictionCard
-              predictions={predictions}
-              confidence={confidence_score}
-              timestamp={prediction.timestamp}
-              processingTime={prediction.processing_time}
-            />
-          </div>
-          
-          <div className="space-y-8">
-            <AIReasoningDisplay
-              reasoning={ai_reasoning}
-              reasoningSteps={reasoning_steps}
-              marketSentiment={market_sentiment}
-              riskFactors={risk_factors}
-            />
-          </div>
+        <div className="space-y-8 max-w-3xl mx-auto">
+          <PredictionCard
+            predictions={predictions}
+            confidence={confidence_score}
+            timestamp={prediction.timestamp}
+            processingTime={prediction.processing_time}
+          />
+          <AIReasoningDisplay
+            reasoning={ai_reasoning}
+            reasoningSteps={reasoning_steps}
+            marketSentiment={market_sentiment}
+            riskFactors={risk_factors}
+          />
         </div>
 
         {/* Disclaimer */}

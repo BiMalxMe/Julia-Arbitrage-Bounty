@@ -495,7 +495,7 @@ class JuliaService {
         alchemy: !!process.env.ALCHEMY_API_KEY,
         huggingface: !!process.env.HUGGINGFACE_API_KEY,
         groq: !!process.env.GROQ_API_KEY,
-        ollama: !!process.env.OLLAMA_URL
+        openrouter: !!process.env.OPENROUTER_API_KEY
       }
     };
   }

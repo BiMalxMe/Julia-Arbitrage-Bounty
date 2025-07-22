@@ -67,4 +67,9 @@ export interface MarketData {
     prices: number[];
     confidence_bands: number[][];
   };
+  // Added for dynamic market data display
+  floor_price?: number;
+  market_cap?: number;
+  volume_24h?: number;
+  total_supply?: number;
 }

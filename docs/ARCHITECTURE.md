@@ -34,7 +34,7 @@ graph TB
     subgraph "External Services"
         OPENSEA[OpenSea API]
         ALCHEMY[Alchemy NFT API]
-        OLLAMA[Ollama LLM]
+        OPENROUTER[OpenRouter LLM]
         HF[Hugging Face API]
         GROQ[Groq API]
     end
@@ -54,7 +54,7 @@ graph TB
     DATA --> ALCHEMY
     DATA --> ETH
     
-    AI --> OLLAMA
+    AI --> OPENROUTER
     AI --> HF
     AI --> GROQ
     
@@ -145,7 +145,7 @@ search_collections(query)
 - Provide confidence scoring
 
 **LLM Integration:**
-- Primary: Ollama (local, free)
+- Primary: OpenRouter (free tier)
 - Fallback 1: Hugging Face Inference API
 - Fallback 2: Groq (fast inference)
 - Final fallback: Rule-based analysis
@@ -188,7 +188,6 @@ search_collections(query)
 
 #### LLM Provider Management
 **Multi-Provider Architecture:**
-- Local Ollama installation (recommended)
 - Cloud providers with free tiers
 - Automatic failover on provider errors
 - Provider health monitoring
@@ -212,7 +211,7 @@ Coordinator receives request →
 │  ├─ Fetch onchain data
 │  └─ Return aggregated data
 ├─ Spawn AI Analyzer Agent
-│  ├─ Try Ollama LLM
+│  ├─ Try OpenRouter LLM
 │  ├─ Fallback to Hugging Face
 │  ├─ Fallback to Groq
 │  └─ Return analysis results
@@ -325,7 +324,6 @@ Local Machine:
 ├─ Frontend (Vite dev server)
 ├─ Backend (Node.js)
 ├─ Julia agents (local execution)
-└─ Ollama (local LLM)
 ```
 
 ### Production

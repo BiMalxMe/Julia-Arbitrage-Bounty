@@ -69,33 +69,6 @@ fi
 
 print_success "Julia check passed: $(julia --version)"
 
-# Install Ollama for local LLM
-print_status "Installing Ollama for local LLM support..."
-if ! command -v ollama &> /dev/null; then
-    if [[ "$OSTYPE" == "linux-gnu"* ]] || [[ "$OSTYPE" == "darwin"* ]]; then
-        curl -fsSL https://ollama.ai/install.sh | sh
-        print_success "Ollama installed successfully"
-    else
-        print_warning "Ollama installation not supported on this OS. Please install manually."
-    fi
-else
-    print_success "Ollama already installed"
-fi
-
-# Start Ollama service
-print_status "Starting Ollama service..."
-if command -v ollama &> /dev/null; then
-    ollama serve &
-    sleep 2
-    
-    # Download recommended models
-    print_status "Downloading recommended LLM models..."
-    ollama pull llama2 &
-    ollama pull mistral &
-    wait
-    print_success "LLM models downloaded"
-fi
-
 # Install Node.js dependencies
 print_status "Installing Node.js dependencies..."
 npm install
@@ -167,13 +140,6 @@ cat > start-all.sh << 'EOF'
 #!/bin/bash
 echo "Starting JuliaOS NFT Predictor (Full Stack)..."
 
-# Start Ollama if not running
-if ! pgrep -x "ollama" > /dev/null; then
-    echo "Starting Ollama service..."
-    ollama serve &
-    sleep 2
-fi
-
 # Start backend in background
 echo "Starting backend..."
 cd backend && npm run dev &
@@ -190,7 +156,6 @@ FRONTEND_PID=$!
 echo "🚀 JuliaOS NFT Predictor is starting up!"
 echo "📊 Frontend: http://localhost:5173"
 echo "🔧 Backend: http://localhost:3001"
-echo "🧠 Ollama: http://localhost:11434"
 echo ""
 echo "Press Ctrl+C to stop all services"
 

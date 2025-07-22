@@ -121,21 +121,7 @@ ALCHEMY_API_KEY=your_free_alchemy_key          # 300M compute units/month
 # AI/LLM Providers
 HUGGINGFACE_API_KEY=your_free_hf_token         # Free inference API
 GROQ_API_KEY=your_free_groq_key               # Free fast inference
-
-# Local LLM (Recommended)
-OLLAMA_URL=http://localhost:11434              # Free local LLM
-```
-
-### Local LLM Setup (Ollama)
-
-```bash
-# Install Ollama
-curl -fsSL https://ollama.ai/install.sh | sh
-
-# Download models
-ollama pull llama2
-ollama pull mistral
-ollama pull codellama
+OPENROUTER_API_KEY=your_free_openrouter_key     # Free OpenRouter key
 ```
 
 ## 🎯 Usage
@@ -219,7 +205,7 @@ end
 # AI Analyzer with multiple provider fallbacks
 function analyze_collection(data::Dict)
     providers = [
-        ("ollama", "llama2"),
+        ("openrouter", "deepseek/deepseek-r1-0528:free"),
         ("huggingface", "meta-llama/Llama-2-7b-chat-hf"),
         ("groq", "llama2-70b-4096")
     ]

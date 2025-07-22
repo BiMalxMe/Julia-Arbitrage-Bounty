@@ -386,13 +386,14 @@ function useLLM(provider::String, model::String, prompt::String;
     headers = Dict("Content-Type" => "application/json")
     
     # Provider-specific configurations
-    if provider == "ollama"
-        url = "http://localhost:11434/api/generate"
+    if provider == "openrouter"
+        url = "https://openrouter.ai/api/v1/chat/completions"
+        headers["Authorization"] = "Bearer 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"
         body = Dict(
-            "model" => model,
-            "prompt" => prompt,
-            "stream" => false,
-            "raw" => false
+            "model" => "deepseek/deepseek-r1-0528:free",
+            "messages" => [
+                Dict("role" => "user", "content" => prompt)
+            ]
         )
     elseif provider == "huggingface"
         url = "https://api-inference.huggingface.co/models/gpt2"
@@ -419,13 +420,13 @@ function useLLM(provider::String, model::String, prompt::String;
     end
 
     try
-        response = HTTP.post(url, headers, JSON3.write(body); readtimeout=60)
+        response = HTTP.post(url, headers, JSON3.write(body); readtimeout=120)
         
         if response.status == 200
             data = JSON3.read(response.body)
             result_text = ""
-            if provider == "ollama"
-                result_text = get(data, :response, "")
+            if provider == "openrouter"
+                result_text = get(data.choices[1].message, :content, "")
             elseif provider == "huggingface"
                 result_text = get(data[1], :generated_text, "")
             elseif provider == "groq"

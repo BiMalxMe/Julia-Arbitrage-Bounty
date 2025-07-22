@@ -63,11 +63,17 @@ export const AIReasoningDisplay: React.FC<AIReasoningDisplayProps> = ({
     }
   };
 
+  // Split reasoning into points (by line, bullet, or number)
+  const insightPoints = reasoning
+    .split(/\n|\r|•|\d+\.|\-/)
+    .map(s => s.trim())
+    .filter(Boolean);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-6"
+      className="bg-black/90 rounded-xl border border-gray-800 p-6 space-y-6 shadow-2xl backdrop-blur-md"
     >
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -86,7 +92,17 @@ export const AIReasoningDisplay: React.FC<AIReasoningDisplayProps> = ({
       {/* Main Reasoning */}
       <div className="space-y-3">
         <h4 className="text-gray-300 font-medium">Key Insights</h4>
-        <p className="text-gray-300 leading-relaxed">{reasoning}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {insightPoints.map((point, idx) => (
+            <div
+              key={idx}
+              className="bg-gradient-to-br from-gray-900/80 to-gray-800/80 border border-gray-700 rounded-lg p-4 shadow hover:shadow-lg transition-all duration-200 flex items-start space-x-3"
+            >
+              <span className="mt-1 w-2 h-2 rounded-full bg-purple-400 flex-shrink-0"></span>
+              <span className="text-gray-200 text-sm leading-relaxed">{point}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Reasoning Steps */}

@@ -104,8 +104,13 @@ function predict_timeframe(base_price::Float64, market_data::Dict, ai_analysis::
         # Add randomness for market unpredictability
         noise_factor = (rand() - 0.5) * factors["noise_amplitude"]
         percentage_change += noise_factor
-        # Calculate target price
+
+        # Clamp percentage change to [-30, 30] for realism
+        percentage_change = max(-30, min(30, percentage_change))
+
+        # Calculate target price and clamp to [0.5x, 2x] the base price
         price_target = base_price * (1 + percentage_change / 100)
+        price_target = max(base_price * 0.5, min(base_price * 2.0, price_target))
         # Determine direction
         direction = if percentage_change > 1
             "up"

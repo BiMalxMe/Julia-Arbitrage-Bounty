@@ -15,7 +15,7 @@ using JSON3
     "name" => "AIAnalyzer",
     "description" => "AI-powered analysis of NFT market data and sentiment",
     "capabilities" => ["llm_analysis", "sentiment_analysis", "trend_analysis"],
-    "providers" => ["ollama", "huggingface", "groq"]
+    "providers" => ["openrouter", "huggingface", "groq"]
 )
 
 # Initialize agent
@@ -31,29 +31,19 @@ function analyze_collection(data::Dict)
         # Prepare analysis prompt
         prompt = create_analysis_prompt(data)
         
-        # Try Ollama first
+        # Try OpenRouter
         analysis_result = nothing
         detailed_errors = []
         
-        # Try Ollama first
-        @info "Attempting analysis with Ollama"
-        success, result = agent.useLLM("ollama", "llama2", prompt)
+        # Try OpenRouter
+        @info "Attempting analysis with OpenRouter"
+        success, result = agent.useLLM("openrouter", "deepseek/deepseek-r1-0528:free", prompt)
         if success
-            @info "Analysis successful with Ollama"
+            @info "Analysis successful with OpenRouter"
             analysis_result = result
         else
-            @warn "Ollama failed: $result"
-            push!(detailed_errors, "Provider 'ollama': $result")
-            
-            # Try HuggingFace as fallback
-            @info "Attempting fallback to HuggingFace"
-            success, result = agent.useLLM("huggingface", "gpt2", prompt)
-            if success
-                @info "Analysis successful with HuggingFace"
-                analysis_result = result
-            else
-                push!(detailed_errors, "Provider 'huggingface': $result")
-            end
+            @warn "OpenRouter failed: $result"
+            push!(detailed_errors, "Provider 'openrouter': $result")
         end
         
         # If all LLMs fail, return detailed errors

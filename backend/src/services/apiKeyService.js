@@ -27,12 +27,12 @@ class ApiKeyService {
         }
       },
       ai_llm: {
-        ollama: {
-          name: 'Ollama (Local)',
-          url: process.env.OLLAMA_URL || 'http://localhost:11434',
-          model: process.env.OLLAMA_MODEL || 'llama2',
-          available: true, // Always available if running
-          cost: 'free'
+        openrouter: {
+          name: 'OpenRouter',
+          key: process.env.OPENROUTER_API_KEY,
+          baseUrl: 'https://openrouter.ai/api/v1',
+          available: !!process.env.OPENROUTER_API_KEY,
+          cost: 'free_tier'
         },
         huggingface: {
           name: 'Hugging Face',
@@ -267,12 +267,12 @@ class ApiKeyService {
    * Test LLM provider
    */
   async testLLMProvider(provider, config) {
-    if (provider === 'ollama') {
+    if (provider === 'openrouter') {
       try {
-        const response = await axios.get(`${config.url}/api/tags`, { timeout: 5000 });
+        const response = await axios.get(`${config.baseUrl}/`, { timeout: 5000 });
         return { success: true, models: response.data.models?.length || 0 };
       } catch (error) {
-        return { success: false, error: 'Ollama not running' };
+        return { success: false, error: 'OpenRouter not responding' };
       }
     }
 
@@ -355,7 +355,7 @@ class ApiKeyService {
    * Get LLM providers in priority order
    */
   getLLMProviders() {
-    const providers = process.env.LLM_PROVIDERS?.split(',') || ['ollama', 'huggingface', 'groq', 'together'];
+    const providers = process.env.LLM_PROVIDERS?.split(',') || ['openrouter', 'huggingface', 'groq', 'together'];
     return providers
       .map(name => ({
         name: name.trim(),

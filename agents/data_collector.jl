@@ -275,9 +275,11 @@ function aggregate_market_data(sources::Dict)
     if haskey(sources, "opensea") && !haskey(sources["opensea"], "error")
         opensea = sources["opensea"]
         market_data["floor_price"] = get(opensea, "floor_price", 0)
-        market_data["volume_24h"] = get(opensea, "volume_24h", 0)
-        market_data["volume_7d"] = get(opensea, "volume_7d", 0)
-        market_data["market_cap"] = get(opensea, "market_cap", 0)
+        # Use one_day_volume if available, else fallback to volume_24h or 0
+        market_data["volume_24h"] = get(opensea, "one_day_volume", get(opensea, "volume_24h", 0))
+        market_data["total_supply"] = get(opensea, "total_supply", 0)
+        # Calculate market cap as floor_price * total_supply
+        market_data["market_cap"] = market_data["floor_price"] * market_data["total_supply"]
         market_data["num_owners"] = get(opensea, "num_owners", 0)
     end
     # Fallback: If floor_price is missing/zero, try Alchemy

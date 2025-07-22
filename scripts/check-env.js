@@ -134,13 +134,7 @@ function printSetupInstructions() {
   console.log('   • Groq: https://console.groq.com/ (free tier)');
   console.log('');
   
-  log('yellow', '2. Install Local LLM (Recommended):');
-  console.log('   curl -fsSL https://ollama.ai/install.sh | sh');
-  console.log('   ollama pull llama2');
-  console.log('   ollama pull mistral');
-  console.log('');
-  
-  log('yellow', '3. Configure Environment:');
+  log('yellow', '2. Configure Environment:');
   console.log('   • Edit .env and backend/.env files');
   console.log('   • Add your API keys');
   console.log('   • Keep USE_MOCK_DATA=true for development');
@@ -173,8 +167,7 @@ function main() {
   const backendEnvGood = checkEnvFile('backend/.env', [
     'OPENSEA_API_KEY',
     'ALCHEMY_API_KEY',
-    'HUGGINGFACE_API_KEY',
-    'OLLAMA_URL'
+    'HUGGINGFACE_API_KEY'
   ]);
   
   // Check Julia environment

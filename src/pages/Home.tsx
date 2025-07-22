@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { motion } from 'framer-motion';
 import { Brain, TrendingUp, Zap, Shield, Users, BarChart3 } from 'lucide-react';
 import { SearchForm } from '../components/SearchForm';
 import { usePrediction } from '../hooks/usePrediction';
 import { useNavigate } from 'react-router-dom';
+import { ThemeContext } from '../App';
 
 export const Home: React.FC = () => {
   const { predict, loading } = usePrediction();
@@ -58,18 +59,18 @@ export const Home: React.FC = () => {
       <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="container mx-auto px-6 py-8"
+        className="container mx-auto px-6 py-8 flex items-center justify-between"
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <Brain className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">NFT Predictor</h1>
-              <p className="text-gray-400 text-sm">Powered by JuliaOS Agents</p>
-            </div>
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg">
+            <Brain className="w-6 h-6 text-white" />
           </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">NFT Predictor</h1>
+            <p className="text-gray-400 text-sm">Powered by JuliaOS Agents</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-4">
           <div className="text-right">
             <div className="text-emerald-400 font-bold">AI Agents Active</div>
             <div className="text-gray-500 text-sm">4/4 Online</div>

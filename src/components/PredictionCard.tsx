@@ -55,13 +55,13 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-6"
+      className="bg-gradient-to-br from-gray-900/80 via-gray-800/80 to-gray-900/80 rounded-xl border border-gray-700 p-6 space-y-6 shadow-xl backdrop-blur-md"
     >
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <Target className="w-6 h-6 text-emerald-400" />
-          <h3 className="text-xl font-bold text-white">Price Predictions</h3>
+          <h3 className="text-xl font-bold text-white tracking-tight">Price Predictions</h3>
         </div>
         <div className="text-right">
           <div className={`text-lg font-bold ${getConfidenceColor(confidence)}`}>
@@ -79,7 +79,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: index * 0.1 }}
-            className="bg-gray-900 rounded-lg p-4 border border-gray-700"
+            className="bg-gradient-to-br from-gray-900/90 to-gray-800/90 rounded-lg p-4 border border-gray-700 shadow-lg hover:shadow-2xl transition-shadow duration-300"
           >
             <div className="flex items-center justify-between mb-3">
               <span className="text-gray-400 text-sm font-medium">{timeframe.label}</span>
@@ -94,7 +94,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
               
               {timeframe.data.price_target && (
                 <div className="text-sm text-gray-300">
-                  Target: {timeframe.data.price_target.toFixed(2)} ETH
+                  <span className="font-semibold text-gray-400">Target:</span> <span className="text-white">{timeframe.data.price_target.toFixed(2)} ETH</span>
                 </div>
               )}
               
