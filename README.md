@@ -3,8 +3,8 @@
 🧠 **AI-Powered NFT Price Predictions using JuliaOS Agent Swarms**
 
 A sophisticated decentralized application that leverages JuliaOS's agent framework to predict NFT collection price movements through multi-agent coordination, LLM integration, and comprehensive market analysis.
-
-![NFT Predictor Demo](https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=1200&h=600&fit=crop)
+##Demo Video : 
+https://www.youtube.com/watch?v=zpgw7blWHAI
 
 ## 🚀 Features
 
