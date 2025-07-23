@@ -15,23 +15,21 @@ class NFTService {
   }
 
   /**
-   * Fetch collection data from OpenSea (free tier)
+   * Fetch collection data from OpenSea (now using v2 API for floor price and more)
    */
   async fetchOpenSeaData(collectionSlug) {
     try {
       const headers = {
         'Accept': 'application/json'
       };
-
       if (process.env.OPENSEA_API_KEY) {
         headers['X-API-KEY'] = process.env.OPENSEA_API_KEY;
       }
-
+      // Use v2 endpoint for stats
       const response = await axios.get(
-        `${this.openSeaBaseUrl}/collection/${collectionSlug}/stats`,
+        `https://api.opensea.io/api/v2/collections/${collectionSlug}/stats`,
         { headers, timeout: 10000 }
       );
-
       return response.data;
     } catch (error) {
       console.warn('OpenSea API error:', error.message);
