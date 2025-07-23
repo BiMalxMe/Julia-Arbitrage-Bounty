@@ -121,24 +121,45 @@ class NFTService {
 
   /**
    * Get collection metadata with fallbacks
+   * Now tries Alchemy first, then OpenSea v2 for floor price and stats if Alchemy fails or is missing floor price.
    */
-  async getCollectionMetadata(contractAddress) {
+  async getCollectionMetadata(contractAddress, collectionSlug = null) {
     const errors = [];
-    
+    let meta = null;
     // Try Alchemy first
     try {
       const alchemyData = await this.withRateLimit(
         () => this.fetchAlchemyData(contractAddress),
         'alchemy'
       );
-      return this.normalizeAlchemyData(alchemyData);
+      meta = this.normalizeAlchemyData(alchemyData);
     } catch (error) {
       errors.push(`Alchemy: ${error.message}`);
     }
-    
+    // If no meta or missing floor price, try OpenSea v2 if slug is provided
+    if ((!meta || meta.floor_price == null) && collectionSlug) {
+      try {
+        const openSeaStats = await this.fetchOpenSeaData(collectionSlug);
+        // Merge OpenSea stats into meta
+        meta = {
+          ...(meta || {}),
+          floor_price: openSeaStats?.total?.floor_price ?? null,
+          market_cap: openSeaStats?.total?.market_cap ?? null,
+          volume_24h: openSeaStats?.intervals?.find(i => i.interval === 'one_day')?.volume ?? null,
+          num_owners: openSeaStats?.total?.num_owners ?? null,
+          // Add more fields as needed
+        };
+      } catch (error) {
+        errors.push(`OpenSea: ${error.message}`);
+      }
+    }
     // Fallback to mock data for demo
-    console.warn('All metadata sources failed, using mock data');
-    return this.generateMockMetadata(contractAddress);
+    if (!meta) {
+      console.warn('All metadata sources failed, using mock data');
+      meta = this.generateMockMetadata(contractAddress);
+    }
+    meta.errors = errors;
+    return meta;
   }
 
   /**
