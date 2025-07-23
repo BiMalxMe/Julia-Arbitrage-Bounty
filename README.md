@@ -4,7 +4,21 @@
 
 A sophisticated decentralized application that leverages JuliaOS's agent framework to predict NFT collection price movements through multi-agent coordination, LLM integration, and comprehensive market analysis.
 ##Demo Video : 
+
 https://www.youtube.com/watch?v=zpgw7blWHAI
+https://www.youtube.com/watch?v=zpgw7blWHAI
+https://www.youtube.com/watch?v=zpgw7blWHAI
+https://www.youtube.com/watch?v=zpgw7blWHAI
+https://www.youtube.com/watch?v=zpgw7blWHAI
+https://www.youtube.com/watch?v=zpgw7blWHAI
+https://www.youtube.com/watch?v=zpgw7blWHAI
+https://www.youtube.com/watch?v=zpgw7blWHAI
+https://www.youtube.com/watch?v=zpgw7blWHAI
+https://www.youtube.com/watch?v=zpgw7blWHAI
+https://www.youtube.com/watch?v=zpgw7blWHAI
+https://www.youtube.com/watch?v=zpgw7blWHAI
+https://www.youtube.com/watch?v=zpgw7blWHAI
+
 
 ## 🚀 Features
 
