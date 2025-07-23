@@ -49,6 +49,17 @@ export const nftApi = {
   async getProviders() {
     const response = await apiClient.get('/providers');
     return response.data;
+  },
+
+  // Fetch OpenSea stats by slug
+  async getOpenSeaStats(slug: string) {
+    try {
+      const response = await apiClient.get(`/opensea-stats/${slug}`);
+      return response.data;
+    } catch (error) {
+      // Error is already logged by interceptor
+      throw error;
+    }
   }
 };
 
