@@ -122,6 +122,7 @@ class NFTService {
   /**
    * Get collection metadata with fallbacks
    * Now tries Alchemy first, then OpenSea v2 for floor price and stats if Alchemy fails or is missing floor price.
+   * Pass collectionSlug if you want OpenSea fallback.
    */
   async getCollectionMetadata(contractAddress, collectionSlug = null) {
     const errors = [];
