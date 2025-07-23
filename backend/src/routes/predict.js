@@ -227,4 +227,36 @@ router.get('/stats', (req, res) => {
   }
 });
 
+/**
+ * GET /api/opensea-stats/:slug
+ * Fetch OpenSea stats for a given collection slug (dynamic)
+ */
+router.get('/opensea-stats/:slug', async (req, res) => {
+  const { slug } = req.params;
+  if (!slug) {
+    return res.status(400).json({
+      success: false,
+      message: 'Collection slug is required',
+      timestamp: new Date().toISOString()
+    });
+  }
+  try {
+    const stats = await nftService.fetchOpenSeaV2Stats(slug);
+    res.json({
+      success: true,
+      slug,
+      stats,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('OpenSea stats endpoint error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch OpenSea stats',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 export default router;

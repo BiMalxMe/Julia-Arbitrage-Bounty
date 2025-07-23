@@ -1,13 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Brain, TrendingUp, Zap, Shield, Users, BarChart3 } from 'lucide-react';
 import { SearchForm } from '../components/SearchForm';
 import { usePrediction } from '../hooks/usePrediction';
 import { useNavigate } from 'react-router-dom';
+import { nftApi } from '../api/nftApi';
 
 export const Home: React.FC = () => {
   const { predict, loading } = usePrediction();
   const navigate = useNavigate();
+  const [slug, setSlug] = useState('azuki');
+  const [stats, setStats] = useState<any>(null);
+  const [statsError, setStatsError] = useState<string | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
 
   const handleSearch = async (address: string) => {
     try {
@@ -16,6 +21,21 @@ export const Home: React.FC = () => {
       navigate('/results', { state: { prediction: result } });
     } catch (error) {
       console.error('Prediction failed:', error);
+    }
+  };
+
+  const handleStatsFetch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatsError(null);
+    setStats(null);
+    setStatsLoading(true);
+    try {
+      const result = await nftApi.getOpenSeaStats(slug);
+      setStats(result.stats);
+    } catch (error: any) {
+      setStatsError(error?.response?.data?.message || 'Failed to fetch stats');
+    } finally {
+      setStatsLoading(false);
     }
   };
 
@@ -97,30 +117,58 @@ export const Home: React.FC = () => {
 
         <SearchForm onSearch={handleSearch} loading={loading} />
 
-        {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-16"
-        >
-          <div className="text-center">
-            <div className="text-3xl font-bold text-emerald-400">85%</div>
-            <div className="text-gray-400 text-sm">Prediction Accuracy</div>
+        {/* Dynamic OpenSea Stats */}
+        <form onSubmit={handleStatsFetch} className="flex flex-col md:flex-row items-center justify-center gap-4 mt-12 mb-8">
+          <input
+            type="text"
+            value={slug}
+            onChange={e => setSlug(e.target.value)}
+            placeholder="Enter OpenSea collection slug (e.g. azuki)"
+            className="px-4 py-2 rounded-lg border border-gray-600 bg-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 w-72"
+          />
+          <button
+            type="submit"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-semibold transition-all duration-200"
+            disabled={statsLoading}
+          >
+            {statsLoading ? 'Loading...' : 'Fetch Stats'}
+          </button>
+        </form>
+        {statsError && (
+          <div className="text-red-400 text-center mb-4">{statsError}</div>
+        )}
+        {stats && (
+          <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 max-w-2xl mx-auto mb-8">
+            <h3 className="text-xl font-bold text-white mb-4">OpenSea Stats for <span className="text-emerald-400">{slug}</span></h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <div className="text-gray-400 text-sm">Market Cap</div>
+                <div className="text-2xl font-bold text-emerald-400">{stats.total?.market_cap?.toLocaleString(undefined, { maximumFractionDigits: 2 })} ETH</div>
+              </div>
+              <div>
+                <div className="text-gray-400 text-sm">Total Volume</div>
+                <div className="text-2xl font-bold text-purple-400">{stats.total?.volume?.toLocaleString(undefined, { maximumFractionDigits: 2 })} ETH</div>
+              </div>
+              <div>
+                <div className="text-gray-400 text-sm">Floor Price</div>
+                <div className="text-2xl font-bold text-orange-400">{stats.total?.floor_price} {stats.total?.floor_price_symbol}</div>
+              </div>
+            </div>
+            <div className="mt-6">
+              <h4 className="text-lg font-semibold text-white mb-2">Intervals</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {stats.intervals?.map((interval: any) => (
+                  <div key={interval.interval} className="bg-gray-900 rounded-lg p-4 border border-gray-700">
+                    <div className="text-gray-400 text-sm mb-1">{interval.interval.replace('_', ' ')}</div>
+                    <div className="text-lg font-bold text-emerald-300">Volume: {interval.volume?.toLocaleString(undefined, { maximumFractionDigits: 2 })} ETH</div>
+                    <div className="text-gray-300 text-sm">Sales: {interval.sales}</div>
+                    <div className="text-gray-300 text-sm">Avg Price: {interval.average_price?.toLocaleString(undefined, { maximumFractionDigits: 2 })} ETH</div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-purple-400">12K+</div>
-            <div className="text-gray-400 text-sm">Collections Analyzed</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-orange-400">2.3s</div>
-            <div className="text-gray-400 text-sm">Avg Processing Time</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-blue-400">4</div>
-            <div className="text-gray-400 text-sm">AI Agents</div>
-          </div>
-        </motion.div>
+        )}
       </motion.section>
 
       {/* Features Section */}

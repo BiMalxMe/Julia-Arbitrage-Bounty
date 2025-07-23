@@ -15,23 +15,21 @@ class NFTService {
   }
 
   /**
-   * Fetch collection data from OpenSea (free tier)
+   * Fetch collection data from OpenSea (now using v2 API for floor price and more)
    */
   async fetchOpenSeaData(collectionSlug) {
     try {
       const headers = {
         'Accept': 'application/json'
       };
-
       if (process.env.OPENSEA_API_KEY) {
         headers['X-API-KEY'] = process.env.OPENSEA_API_KEY;
       }
-
+      // Use v2 endpoint for stats
       const response = await axios.get(
-        `${this.openSeaBaseUrl}/collection/${collectionSlug}/stats`,
+        `https://api.opensea.io/api/v2/collections/${collectionSlug}/stats`,
         { headers, timeout: 10000 }
       );
-
       return response.data;
     } catch (error) {
       console.warn('OpenSea API error:', error.message);
@@ -123,24 +121,46 @@ class NFTService {
 
   /**
    * Get collection metadata with fallbacks
+   * Now tries Alchemy first, then OpenSea v2 for floor price and stats if Alchemy fails or is missing floor price.
+   * Pass collectionSlug if you want OpenSea fallback.
    */
-  async getCollectionMetadata(contractAddress) {
+  async getCollectionMetadata(contractAddress, collectionSlug = null) {
     const errors = [];
-    
+    let meta = null;
     // Try Alchemy first
     try {
       const alchemyData = await this.withRateLimit(
         () => this.fetchAlchemyData(contractAddress),
         'alchemy'
       );
-      return this.normalizeAlchemyData(alchemyData);
+      meta = this.normalizeAlchemyData(alchemyData);
     } catch (error) {
       errors.push(`Alchemy: ${error.message}`);
     }
-    
+    // If no meta or missing floor price, try OpenSea v2 if slug is provided
+    if ((!meta || meta.floor_price == null) && collectionSlug) {
+      try {
+        const openSeaStats = await this.fetchOpenSeaData(collectionSlug);
+        // Merge OpenSea stats into meta
+        meta = {
+          ...(meta || {}),
+          floor_price: openSeaStats?.total?.floor_price ?? null,
+          market_cap: openSeaStats?.total?.market_cap ?? null,
+          volume_24h: openSeaStats?.intervals?.find(i => i.interval === 'one_day')?.volume ?? null,
+          num_owners: openSeaStats?.total?.num_owners ?? null,
+          // Add more fields as needed
+        };
+      } catch (error) {
+        errors.push(`OpenSea: ${error.message}`);
+      }
+    }
     // Fallback to mock data for demo
-    console.warn('All metadata sources failed, using mock data');
-    return this.generateMockMetadata(contractAddress);
+    if (!meta) {
+      console.warn('All metadata sources failed, using mock data');
+      meta = this.generateMockMetadata(contractAddress);
+    }
+    meta.errors = errors;
+    return meta;
   }
 
   /**
